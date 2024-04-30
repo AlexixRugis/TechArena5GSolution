@@ -5,15 +5,36 @@
 
 using namespace std;
 
+
 struct Interval {
   int start, end;
   vector<int> users;
 };
 
+
 struct UserInfo {
   int rbNeed;
   int beam;
   int id;
+};
+
+struct MaskedInterval : public Interval {
+  unsigned int mask;
+
+  MaskedInterval(int start_, int end_) {
+    start = start_;
+    end = end_;
+    mask = 0;
+  }
+
+  bool CanAddUser(const UserInfo& u) {
+    return (mask & (1 << u.beam)) == 0;
+  }
+
+  void AddUser(const UserInfo& u) {
+    users.push_back(u.id);
+    mask |= (1 << u.beam);
+  }
 };
 
 /// <summary>
@@ -37,13 +58,13 @@ bool sortIntervalsDescending(const Interval& i1, const Interval& i2) {
 /// <summary>
 /// Получить интервалы в которые можно вставлять пользователей
 /// </summary>
-vector<Interval> getFreeIntervals(const vector<Interval>& reserved, int m) {
+vector<MaskedInterval> getFreeIntervals(const vector<Interval>& reserved, int m) {
   int start = 0;
-  vector<Interval> res;
+  vector<MaskedInterval> res;
 
   for (size_t i = 0; i < reserved.size(); i++) {
     if (start < reserved[i].start) {
-      res.push_back({ start, reserved[i].start });
+      res.push_back(MaskedInterval(start, reserved[i].start));
       start = reserved[i].end;
     }
   }
@@ -69,23 +90,29 @@ vector<Interval> getFreeIntervals(const vector<Interval>& reserved, int m) {
 vector<Interval> Solver(int N, int M, int K, int J, int L,
   vector<Interval> reservedRBs,
   vector<UserInfo> userInfos) {
-  vector<Interval> answer;
 
   sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescending);
 
-  vector<Interval> intervals = getFreeIntervals(reservedRBs, M);
+  vector<MaskedInterval> intervals = getFreeIntervals(reservedRBs, M);
   sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
 
-  for (size_t i = 0; i < min(intervals.size(), userInfos.size()); i++) {
-    intervals[i].users.push_back(userInfos[i].id);
-  }
+  for (size_t i = 0; i < userInfos.size(); i++) {
+    for (auto& interval : intervals) {
+      if (interval.users.size() >= L) continue;
+      if (!interval.CanAddUser(userInfos[i])) continue;
 
-  for (size_t i = 0; answer.size() < J && i < intervals.size(); i++) {
-    if (intervals[i].users.size() > 0) {
-      answer.push_back(intervals[i]);
+      interval.AddUser(userInfos[i]);
+      break;
     }
   }
-
+  
+  
+  vector<Interval> answer;
+  for (size_t i = 0; answer.size() < J && i < intervals.size(); i++) {
+    if (intervals[i].users.size() > 0) {
+      answer.push_back((Interval)intervals[i]);
+    }
+  }
 
   return answer;
 }
