@@ -1,10 +1,13 @@
 ﻿#pragma once
 
 #include <vector>
+#include <algorithm>
+
+using namespace std;
 
 struct Interval {
   int start, end;
-  std::vector<int> users;
+  vector<int> users;
 };
 
 struct UserInfo {
@@ -12,6 +15,45 @@ struct UserInfo {
   int beam;
   int id;
 };
+
+/// <summary>
+/// Получить длину интервала
+/// </summary>
+int getIntervalLength(const Interval& i) {
+  return i.end - i.start;
+}
+
+/// <summary>
+/// Сортировка пользователей по убыванию требований
+/// </summary>
+bool sortUsersByRbNeedDescending(const UserInfo& u1, const UserInfo& u2) {
+  return u1.rbNeed > u2.rbNeed;
+}
+
+bool sortIntervalsDescending(const Interval& i1, const Interval& i2) {
+  return getIntervalLength(i1) > getIntervalLength(i2);
+}
+
+/// <summary>
+/// Получить интервалы в которые можно вставлять пользователей
+/// </summary>
+vector<Interval> getFreeIntervals(const vector<Interval>& reserved, int m) {
+  int start = 0;
+  vector<Interval> res;
+
+  for (size_t i = 0; i < reserved.size(); i++) {
+    if (start < reserved[i].start) {
+      res.push_back({ start, reserved[i].start });
+      start = reserved[i].end;
+    }
+  }
+
+  if (start < m) {
+    res.push_back({ start, m });
+  }
+
+  return res;
+}
 
 /// <summary>
 /// Функция решения задачи
@@ -24,14 +66,26 @@ struct UserInfo {
 /// <param name="reservedRBs">Зарезервированные интервалы</param>
 /// <param name="userInfos">Информация о пользователях</param>
 /// <returns>Интервалы передачи данных, до J штук</returns>
-std::vector<Interval> Solver(int N, int M, int K, int J, int L,
-  std::vector<Interval> reservedRBs,
-  std::vector<UserInfo> userInfos) {
-  std::vector<Interval> answer;
-  //your algorithm 
-  answer.push_back({
-    1, 10,
-    {0, 1 , 2, 3}
-    });
+vector<Interval> Solver(int N, int M, int K, int J, int L,
+  vector<Interval> reservedRBs,
+  vector<UserInfo> userInfos) {
+  vector<Interval> answer;
+
+  sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescending);
+
+  vector<Interval> intervals = getFreeIntervals(reservedRBs, M);
+  sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
+
+  for (size_t i = 0; i < min(intervals.size(), userInfos.size()); i++) {
+    intervals[i].users.push_back(userInfos[i].id);
+  }
+
+  for (size_t i = 0; answer.size() < J && i < intervals.size(); i++) {
+    if (intervals[i].users.size() > 0) {
+      answer.push_back(intervals[i]);
+    }
+  }
+
+
   return answer;
 }
