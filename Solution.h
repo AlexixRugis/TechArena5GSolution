@@ -6,14 +6,13 @@
 
 using namespace std;
 
-float lossThresholdMultiplierA = -0.0941083f;
-float lossThresholdMultiplierB = 0.7f;
+float lossThresholdMultiplierA = -0.272604f;
+float lossThresholdMultiplierB = 0.68f;
 
 void SetHyperParams(float a, float b) {
   lossThresholdMultiplierA = a;
   lossThresholdMultiplierB = b;
 }
-
 
 struct Interval {
   int start, end;
@@ -110,7 +109,7 @@ vector<MaskedInterval> getFreeIntervals(const vector<Interval>& reserved, int m)
   return res;
 }
 
-size_t GetSplitIndex(const MaskedInterval& interval, int lossThreshold, const vector<UserInfo>& users) {
+size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold, const vector<UserInfo>& users) {
   size_t startSplitIndex = 0;
   for (; startSplitIndex < interval.users.size(); startSplitIndex++) {
     /*
@@ -128,7 +127,7 @@ size_t GetSplitIndex(const MaskedInterval& interval, int lossThreshold, const ve
 
     int loss = interval.end - min(interval.end, interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed);
     //cumulativeLoss += loss;
-    if (loss >= lossThreshold) {
+    if (loss > lossThreshold) {
       break;
     }
   }
@@ -142,7 +141,7 @@ size_t GetSplitIndex(const MaskedInterval& interval, int lossThreshold, const ve
 /// |-----|    |-----|
 /// |-----|    |-----|
 /// </summary>
-bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThreshold, const vector<UserInfo>& users) {
+bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, float lossThreshold, const vector<UserInfo>& users) {
   MaskedInterval& interval = intervals[index];
   int intLen = getIntervalLength(interval);
   if (intLen < 2) return false;
@@ -224,13 +223,15 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
     else {
       if (intervals.size() < J) {
         for (size_t j = 0; j < intervals.size(); j++) {
-          int lossThreshold = (int)(min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * ltm);
+          float lossThreshold = min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * ltm;
           if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) {
             sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
             break;
           }
         }
-
+      }
+      else {
+        attempt = maxAttempts + 1;
       }
     }
   }
