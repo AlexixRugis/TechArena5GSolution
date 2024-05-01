@@ -223,25 +223,14 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
     }
     else {
       if (intervals.size() < J) {
-        sort(intervals.begin(), intervals.end(), [&](MaskedInterval& i1, MaskedInterval& i2) {
-          int length1 = getIntervalLength(i1);
-          int length2 = getIntervalLength(i2);
-          if (length1 > userInfos[userIndex].rbNeed && length2 > userInfos[userIndex].rbNeed ||
-            length1 <= userInfos[userIndex].rbNeed && length2 <= userInfos[userIndex].rbNeed) {
-            int splitIndex1 = GetSplitIndex(i1, (int)(min(getIntervalLength(i1), userInfos[userIndex].rbNeed) * ltm), originalUserInfos);
-            int splitIndex2 = GetSplitIndex(i1, (int)(min(getIntervalLength(i2), userInfos[userIndex].rbNeed) * ltm), originalUserInfos);
-            return splitIndex1 < splitIndex2;
-          }
-          return length1 > length2;
-          });
-
         for (size_t j = 0; j < intervals.size(); j++) {
-
           int lossThreshold = (int)(min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * ltm);
-          if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) break;
+          if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) {
+            sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
+            break;
+          }
         }
 
-        sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
       }
     }
   }

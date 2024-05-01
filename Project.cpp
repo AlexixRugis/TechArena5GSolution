@@ -89,7 +89,7 @@ float run() {
 
 int main()
 {
-  /*float p2 = 0.7f;
+  float p2 = 0.7f;
   float l = -1.0f, r = 1.0f;
   for (int i = 0; i < 10; i++) {
     float m1 = l + (r - l) / 3;
@@ -109,6 +109,6 @@ int main()
   }
 
   cout << (l + r) / 2 << endl;
-  SetHyperParams((l + r) / 2, p2);*/
+  SetHyperParams((l + r) / 2, p2);
   cout << "Average filled: " << run() << "%\n";
 }
