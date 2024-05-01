@@ -13,10 +13,9 @@ using namespace std;
 
 //#define LOG_ENABLED
 
-int main()
-{
+float run() {
   ifstream ifs("open.txt");
-  
+
   int t;
   ifs >> t;
 
@@ -85,5 +84,31 @@ int main()
 
   }
 
-  cout << "Average filled: " << allTestsScore / t << "%\n";
+  return allTestsScore / t; 
+}
+
+int main()
+{
+  /*float p2 = 0.7f;
+  float l = -1.0f, r = 1.0f;
+  for (int i = 0; i < 10; i++) {
+    float m1 = l + (r - l) / 3;
+    float m2 = l + 2 * (r - l) / 3;
+
+    SetHyperParams(m1, p2);
+    float r1 = run();
+    SetHyperParams(m2, p2);
+    float r2 = run();
+
+    if (r1 < r2) {
+      l = m1;
+    }
+    else {
+      r = m2;
+    }
+  }
+
+  cout << (l + r) / 2 << endl;
+  SetHyperParams((l + r) / 2, p2);*/
+  cout << "Average filled: " << run() << "%\n";
 }

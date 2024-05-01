@@ -6,6 +6,14 @@
 
 using namespace std;
 
+float lossThresholdMultiplierA = -0.0941083f;
+float lossThresholdMultiplierB = 0.7f;
+
+void SetHyperParams(float a, float b) {
+  lossThresholdMultiplierA = a;
+  lossThresholdMultiplierB = b;
+}
+
 
 struct Interval {
   int start, end;
@@ -163,6 +171,11 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThre
   return true;
 }
 
+float getLossThresholdMultiplier(int userIndex, int usersCount) {
+  float x = (float)userIndex / usersCount;
+  return lossThresholdMultiplierA*x*x + lossThresholdMultiplierB;
+}
+
 
 /// <summary>
 /// Функция решения задачи
@@ -187,11 +200,12 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
   // Какие-то параметры, которые возможно влияют на точность
   const int maxAttempts = 8;
-  const float lossThresholdMultiplier = 0.69f;
 
   int attempt = 0;
   size_t userIndex = 0;
   while (userIndex < originalUserInfos.size()) {
+    float ltm = getLossThresholdMultiplier(userIndex, originalUserInfos.size());
+
     attempt++;
     bool fit = false;
     for (auto& interval : intervals) {
@@ -214,15 +228,16 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
           int length2 = getIntervalLength(i2);
           if (length1 > userInfos[userIndex].rbNeed && length2 > userInfos[userIndex].rbNeed ||
             length1 <= userInfos[userIndex].rbNeed && length2 <= userInfos[userIndex].rbNeed) {
-            int splitIndex1 = GetSplitIndex(i1, (int)(min(getIntervalLength(i1), userInfos[userIndex].rbNeed) * lossThresholdMultiplier), originalUserInfos);
-            int splitIndex2 = GetSplitIndex(i1, (int)(min(getIntervalLength(i2), userInfos[userIndex].rbNeed) * lossThresholdMultiplier), originalUserInfos);
+            int splitIndex1 = GetSplitIndex(i1, (int)(min(getIntervalLength(i1), userInfos[userIndex].rbNeed) * ltm), originalUserInfos);
+            int splitIndex2 = GetSplitIndex(i1, (int)(min(getIntervalLength(i2), userInfos[userIndex].rbNeed) * ltm), originalUserInfos);
             return splitIndex1 < splitIndex2;
           }
           return length1 > length2;
           });
 
         for (size_t j = 0; j < intervals.size(); j++) {
-          int lossThreshold = (int)(min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * lossThresholdMultiplier);
+
+          int lossThreshold = (int)(min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * ltm);
           if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) break;
         }
 
