@@ -6,8 +6,8 @@
 
 using namespace std;
 
-float lossThresholdMultiplierA = -0.272604f;
-float lossThresholdMultiplierB = 0.68f;
+float lossThresholdMultiplierA = -0.140036f;
+float lossThresholdMultiplierB = 0.65f;
 
 void SetHyperParams(float a, float b) {
   lossThresholdMultiplierA = a;
@@ -207,13 +207,27 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
     attempt++;
     bool fit = false;
-    for (auto& interval : intervals) {
+
+    int firstValid = -1;
+    int lastGreater = -1;
+    for (size_t i = 0; i < intervals.size(); i++) {
+      auto& interval = intervals[i];
       if (interval.users.size() >= L) continue;
       if (!interval.CanAddUser(userInfos[userIndex])) continue;
 
-      interval.AddUserSorted(userInfos[userIndex], interval.start, originalUserInfos);
+      if (firstValid == -1) firstValid = i;
+      
+      if (getIntervalLength(interval) >= userInfos[userIndex].rbNeed)
+        lastGreater = i;
+    }
+
+    if (firstValid >= 0 || lastGreater >= 0) {
+      if (lastGreater >= 0)
+        intervals[lastGreater].AddUserSorted(userInfos[userIndex], intervals[lastGreater].start, originalUserInfos);
+      else
+        intervals[firstValid].AddUserSorted(userInfos[userIndex], intervals[firstValid].start, originalUserInfos);
+
       fit = true;
-      break;
     }
 
     if (fit || attempt >= maxAttempts) {
