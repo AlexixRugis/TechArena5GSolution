@@ -34,9 +34,30 @@ struct MaskedInterval : public Interval {
     return (mask & (1 << u.beam)) == 0;
   }
 
-  void AddUser(const UserInfo& u, int userStart) {
+  void AddUserUnordered(const UserInfo& u, int userStart) {
     users.push_back(u.id);
     userStarts.push_back(userStart);
+    mask |= (1 << u.beam);
+  }
+
+  void AddUserSorted(const UserInfo& u, int userStart, vector<UserInfo>& userInfos) {
+    // вставка с сортировкой
+    int i = 0;
+    for (; i < users.size(); i++) {
+      int newUserRB = min(end, userStart + u.rbNeed);
+      int oldUserBound = min(end, userStarts[i] + userInfos[users[i]].rbNeed);
+      if (newUserRB >= oldUserBound) break;
+    }
+
+    if (i == users.size()) {
+      users.push_back(u.id);
+      userStarts.push_back(userStart);
+    }
+    else {
+      users.insert(users.begin() + i, u.id);
+      userStarts.insert(userStarts.begin() + i, userStart);
+    }
+
     mask |= (1 << u.beam);
   }
 };
@@ -97,7 +118,21 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThre
 
   size_t startSplitIndex = 0;
   for (; startSplitIndex < interval.users.size(); startSplitIndex++) {
+    /*
+    \         .
+     \        .
+       \      .
+          \   |-------------| loss
+    ------------------------- startSplitIndex
+              \
+              .       \
+              .             \
+    все что справа от черты округляется вправо, слева округляется по черте
+    до разделения округление было вправо для всех
+    */
+
     int loss = interval.end - min(interval.end, interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed);
+    //cumulativeLoss += loss;
     if (loss >= lossThreshold) {
       break;
     }
@@ -108,20 +143,20 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThre
   int midPos = max(interval.start, min(interval.end, interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed));
   if (midPos == interval.start || midPos == interval.end) return false;
 
-  MaskedInterval int1(interval.start, midPos);
-  MaskedInterval int2(midPos, interval.end);
+  MaskedInterval intL(interval.start, midPos);
+  MaskedInterval intR(midPos, interval.end);
 
   for (size_t i = 0; i < startSplitIndex; i++) {
-    int1.AddUser(users[interval.users[i]], interval.userStarts[i]);
-    int2.AddUser(users[interval.users[i]], interval.userStarts[i]);
+    intL.AddUserUnordered(users[interval.users[i]], interval.userStarts[i]);
+    intR.AddUserUnordered(users[interval.users[i]], interval.userStarts[i]);
   }
 
   for (size_t i = startSplitIndex; i < interval.users.size(); i++) {
-    int1.AddUser(users[interval.users[i]], interval.userStarts[i]);
+    intL.AddUserUnordered(users[interval.users[i]], interval.userStarts[i]);
   }
 
-  intervals[index] = int1;
-  intervals.push_back(int2);
+  intervals[index] = intL;
+  intervals.push_back(intR);
 
   return true;
 }
@@ -149,8 +184,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
   sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
 
   // Какие-то параметры, которые возможно влияют на точность
-  const int maxAttempts = 10;
-  const float lossThresholdMultiplier = 0.5f;
+  const int maxAttempts = 8;
+  const float lossThresholdMultiplier = 0.68f;
 
   int attempt = 0;
   size_t userIndex = 0;
@@ -161,7 +196,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
       if (interval.users.size() >= L) continue;
       if (!interval.CanAddUser(userInfos[userIndex])) continue;
 
-      interval.AddUser(userInfos[userIndex], interval.start);
+      interval.AddUserSorted(userInfos[userIndex], interval.start, originalUserInfos);
       fit = true;
       break;
     }
@@ -174,7 +209,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
       if (intervals.size() < J) {
         for (size_t j = 0; j < intervals.size(); j++) {
           int lossThreshold = (int)(min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * lossThresholdMultiplier);
-          //int lossThreshold = (int)(min(getIntervalLength(intervals[j]) / 2, userInfos[userIndex].rbNeed) * lossThresholdMultiplier);
           if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) {
             sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
             break;
