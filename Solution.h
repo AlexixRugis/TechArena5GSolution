@@ -80,8 +80,8 @@ vector<MaskedInterval> getFreeIntervals(const vector<Interval>& reserved, int m)
 
 /// <summary>
 /// Разделяет интервал пополам для экономии места
-/// |-----|    |  |  |
-/// |-----| -> |--|--|
+/// |-----|    |--|  |
+/// |-----| -> |--|  |
 /// |-----|    |-----|
 /// |-----|    |-----|
 /// </summary>
@@ -123,7 +123,7 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThre
   for (size_t i = startSplitIndex; i < interval.users.size(); i++) {
     if (flag) int1.AddUser(users[interval.users[i]]);
     else int2.AddUser(users[interval.users[i]]);
-    flag = !flag;
+    //flag = !flag;
   }
 
   intervals[index] = int1;

@@ -8,7 +8,8 @@
 
 using namespace std;
 
-//#define MAX_TESTS 10
+//#define MAX_TESTS 5
+//#define SINGLE_TEST 1000
 
 //#define LOG_ENABLED
 
@@ -45,6 +46,14 @@ int main()
       users[i].beam = beam;
     }
 
+#ifdef SINGLE_TEST
+
+    if (ti + 1 != SINGLE_TEST) {
+      continue;
+    }
+
+#endif // SINGLE_TEST
+
     vector<Interval> output = Solver(n, m, k, j, l, reserved, users);
 
     int outputScore = 0;
@@ -66,7 +75,7 @@ int main()
     cout << left;
     cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << endl;
     for (const auto& interval : output) {
-      cout << setw(10) << interval.end << setw(10) << interval.end;
+      cout << setw(10) << interval.start << setw(10) << interval.end;
       for (const auto& user : interval.users) {
         cout << user << ' ';
       }
