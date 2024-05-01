@@ -44,9 +44,9 @@ struct MaskedInterval : public Interval {
     // вставка с сортировкой
     int i = 0;
     for (; i < users.size(); i++) {
-      int newUserRB = min(end, userStart + u.rbNeed);
+      int newUserBound = min(end, userStart + u.rbNeed);
       int oldUserBound = min(end, userStarts[i] + userInfos[users[i]].rbNeed);
-      if (newUserRB >= oldUserBound) break;
+      if (newUserBound >= oldUserBound) break;
     }
 
     if (i == users.size()) {
@@ -102,20 +102,7 @@ vector<MaskedInterval> getFreeIntervals(const vector<Interval>& reserved, int m)
   return res;
 }
 
-
-/// <summary>
-/// Разделяет интервал пополам для экономии места
-/// |-----|    |  |  |
-/// |-----| -> |--|--|
-/// |-----|    |-----|
-/// |-----|    |-----|
-/// </summary>
-bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThreshold, const vector<UserInfo>& users) {
-  MaskedInterval& interval = intervals[index];
-  int intLen = getIntervalLength(interval);
-  if (intLen < 2) return false;
-
-
+size_t GetSplitIndex(const MaskedInterval& interval, int lossThreshold, const vector<UserInfo>& users) {
   size_t startSplitIndex = 0;
   for (; startSplitIndex < interval.users.size(); startSplitIndex++) {
     /*
@@ -137,7 +124,22 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThre
       break;
     }
   }
+  return startSplitIndex;
+}
 
+/// <summary>
+/// Разделяет интервал пополам для экономии места
+/// |-----|    |--|  |
+/// |-----| -> |--|  |
+/// |-----|    |-----|
+/// |-----|    |-----|
+/// </summary>
+bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, int lossThreshold, const vector<UserInfo>& users) {
+  MaskedInterval& interval = intervals[index];
+  int intLen = getIntervalLength(interval);
+  if (intLen < 2) return false;
+
+  size_t startSplitIndex = GetSplitIndex(interval, lossThreshold, users);
   if (startSplitIndex == interval.users.size()) return false;
 
   int midPos = max(interval.start, min(interval.end, interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed));
@@ -185,7 +187,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
   // Какие-то параметры, которые возможно влияют на точность
   const int maxAttempts = 8;
-  const float lossThresholdMultiplier = 0.68f;
+  const float lossThresholdMultiplier = 0.69f;
 
   int attempt = 0;
   size_t userIndex = 0;
@@ -207,17 +209,27 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
     }
     else {
       if (intervals.size() < J) {
+        sort(intervals.begin(), intervals.end(), [&](MaskedInterval& i1, MaskedInterval& i2) {
+          int length1 = getIntervalLength(i1);
+          int length2 = getIntervalLength(i2);
+          if (length1 > userInfos[userIndex].rbNeed && length2 > userInfos[userIndex].rbNeed ||
+            length1 <= userInfos[userIndex].rbNeed && length2 <= userInfos[userIndex].rbNeed) {
+            int splitIndex1 = GetSplitIndex(i1, (int)(min(getIntervalLength(i1), userInfos[userIndex].rbNeed) * lossThresholdMultiplier), originalUserInfos);
+            int splitIndex2 = GetSplitIndex(i1, (int)(min(getIntervalLength(i2), userInfos[userIndex].rbNeed) * lossThresholdMultiplier), originalUserInfos);
+            return splitIndex1 < splitIndex2;
+          }
+          return length1 > length2;
+          });
+
         for (size_t j = 0; j < intervals.size(); j++) {
           int lossThreshold = (int)(min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * lossThresholdMultiplier);
-          if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) {
-            sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
-            break;
-          }
+          if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) break;
         }
+
+        sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
       }
     }
   }
-  
   
   vector<Interval> answer;
   for (size_t i = 0; answer.size() < J && i < intervals.size(); i++) {
