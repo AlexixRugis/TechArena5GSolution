@@ -47,7 +47,7 @@ struct MaskedInterval : public Interval {
     mask |= (1 << u.beam);
   }
 
-  void AddUserSorted(const UserInfo& u, int userStart, vector<UserInfo>& userInfos) {
+  void AddUserSorted(const UserInfo& u, int userStart, const vector<UserInfo>& userInfos) {
     // вставка с сортировкой
     int i = 0;
     for (; i < users.size(); i++) {
@@ -113,20 +113,19 @@ size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold, const 
   size_t startSplitIndex = 0;
   for (; startSplitIndex < interval.users.size(); startSplitIndex++) {
     /*
-    \         .
-     \        .
-       \      .
+    \         |
+     \        |
+       \      |
           \   |-------------| loss
-    ------------------------- startSplitIndex
+    -.-.-.-.-.-.-.-.-.-.-.-.- startSplitIndex
               \
-              .       \
-              .             \
+              |       \
+              |             \
     все что справа от черты округляется вправо, слева округляется по черте
     до разделения округление было вправо для всех
     */
 
     int loss = interval.end - min(interval.end, interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed);
-    //cumulativeLoss += loss;
     if (loss > lossThreshold) {
       break;
     }
@@ -135,7 +134,7 @@ size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold, const 
 }
 
 /// <summary>
-/// Разделяет интервал пополам для экономии места
+/// Разделяет интервал для экономии места, при этом счёт не уменьшается
 /// |-----|    |--|  |
 /// |-----| -> |--|  |
 /// |-----|    |-----|
@@ -149,8 +148,8 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, float lossTh
   size_t startSplitIndex = GetSplitIndex(interval, lossThreshold, users);
   if (startSplitIndex == interval.users.size()) return false;
 
-  int midPos = max(interval.start, min(interval.end, interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed));
-  if (midPos == interval.start || midPos == interval.end) return false;
+  int midPos = interval.userStarts[startSplitIndex] + users[interval.users[startSplitIndex]].rbNeed;
+  if (midPos <= interval.start || midPos >= interval.end) return false;
 
   MaskedInterval intL(interval.start, midPos);
   MaskedInterval intR(midPos, interval.end);
