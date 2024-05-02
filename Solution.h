@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <queue>
 #include <algorithm>
+#include <list>
 #include <climits>
 
 using namespace std;
@@ -101,19 +102,9 @@ struct MaskedInterval : public Interval {
       }
     }
 
-    int maxProfit = INT_MIN;
-    int maxProfitIndex = -1;
-    for (size_t i = 0; i < users.size(); i++) {
-      int u = users[i];
-      
-      int profit = min(end, start + user.rbNeed) - min(end, userStarts[i] + userInfos[u].rbNeed);
-      if (profit > maxProfit) {
-        maxProfit = profit;
-        maxProfitIndex = i;
-      }
-    }
-
-    return { maxProfit, maxProfitIndex };
+    int u = users.back();
+    int profit = min(end, start + user.rbNeed) - min(end, userStarts[users.size() - 1] + userInfos[u].rbNeed);
+    return { profit, users.size() - 1 };
   }
 };
 
@@ -206,7 +197,7 @@ float getLossThresholdMultiplier(int userIndex, int usersCount) {
   return lossThresholdMultiplierA*x*x + lossThresholdMultiplierB;
 }
 
-bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, const vector<UserInfo>& userInfos, vector<UserInfo>* deferred) {
+bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, const vector<UserInfo>& userInfos) {
   int fitIndex = -1;
   pair<int, int> maxProfit = { 0, -1 };
   for (size_t i = 0; i < intervals.size(); i++) {
@@ -219,7 +210,6 @@ bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
 
   if (maxProfit.first > replaceThreshold && fitIndex != -1) {
     int canBeDeferred = intervals[fitIndex].ReplaceUser(user, maxProfit.second, userInfos);
-    if (deferred != nullptr && canBeDeferred >= 0) deferred->push_back(userInfos[canBeDeferred]);
     return true;
   }
 
@@ -271,7 +261,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
   vector<MaskedInterval> intervals = GetUnlockedIntervals(reservedRBs, M);
   sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
 
-  vector<UserInfo> deferred;
+  list<UserInfo> deferred;
 
   // Какие-то параметры, которые возможно влияют на точность
   const int maxAttempts = 4;
@@ -288,7 +278,16 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
     // если нет пустой ячейки то попробовать заменить что-то
     if (firstOrShortest == -1) {
-      inserted = TryReplaceUser(intervals, user, 4, originalUserInfos, &deferred);
+
+      auto it = deferred.begin();
+      while (it != deferred.end()) {
+        bool res = TryReplaceUser(intervals, *it, 0, originalUserInfos);
+        auto lastIt = it;
+        it++;
+        if (res) deferred.erase(lastIt);
+      }
+
+      inserted = TryReplaceUser(intervals, user, 6, originalUserInfos);
     }
     else {
       intervals[firstOrShortest].AddUserSorted(user, intervals[firstOrShortest].start, originalUserInfos);
@@ -308,10 +307,9 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
   }
   
   // последняя попытка вставить
-  for (const auto& user : deferred) {
-    TryReplaceUser(intervals, user, 0, originalUserInfos, nullptr);
+  for (auto& v : deferred) {
+    TryReplaceUser(intervals, v, 0, originalUserInfos);
   }
-
 
   // формируем ответ
   vector<Interval> answer;

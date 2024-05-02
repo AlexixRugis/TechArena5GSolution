@@ -4,9 +4,11 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <chrono>
 #include "Solution.h"
 
 using namespace std;
+using namespace std::chrono;
 
 //#define MAX_TESTS 5
 //#define SINGLE_TEST 1000
@@ -110,5 +112,15 @@ int main()
 
   cout << (l + r) / 2 << endl;
   SetHyperParams((l + r) / 2, p2);
+
+  auto start = high_resolution_clock::now();
+
   cout << "Average filled: " << run() << "%\n";
+
+  auto stop = high_resolution_clock::now();
+  auto duration = duration_cast<milliseconds>(stop - start);
+
+  // double because 1000 of 2000 tests
+  cout << "Time taken by function: "
+    << duration.count() * 2 << " ms" << endl;
 }
