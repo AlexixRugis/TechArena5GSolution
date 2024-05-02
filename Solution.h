@@ -3,11 +3,12 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+#include <climits>
 
 using namespace std;
 
-float lossThresholdMultiplierA = -0.140036f;
-float lossThresholdMultiplierB = 0.65f;
+float lossThresholdMultiplierA = 0.0314823f;
+float lossThresholdMultiplierB = 0.75f;
 
 void SetHyperParams(float a, float b) {
   lossThresholdMultiplierA = a;
@@ -37,8 +38,8 @@ struct MaskedInterval : public Interval {
     mask = 0;
   }
 
-  bool CanAddUser(const UserInfo& u) {
-    return (mask & (1 << u.beam)) == 0;
+  bool HasMaskCollision(const UserInfo& u) const {
+    return (mask & (1 << u.beam)) != 0;
   }
 
   void AddUserUnordered(const UserInfo& u, int userStart) {
@@ -67,18 +68,49 @@ struct MaskedInterval : public Interval {
 
     mask |= (1 << u.beam);
   }
+
+  void ReplaceUser(const UserInfo& u, int index, const vector<UserInfo>& userInfos) {
+    mask ^= (1 << userInfos[users[index]].beam);
+    users.erase(users.begin() + index);
+    userStarts.erase(userStarts.begin() + index);
+
+    AddUserSorted(u, start, userInfos);
+  }
+
+  pair<int, int> GetInsertionProfit(const UserInfo& user, const vector<UserInfo>& userInfos) const {
+    if (users.size() == 0) {
+      return { min(end - start, user.rbNeed), 0 };
+    }
+
+    if (HasMaskCollision(user)) {
+      for (size_t i = 0; i < users.size(); i++) {
+        int u = users[i];
+        if (userInfos[u].beam == user.beam) {
+          return { min(end, start + user.rbNeed) - min(end, userStarts[i] + userInfos[u].rbNeed), i };
+        }
+      }
+    }
+
+    int maxProfit = INT_MIN;
+    int maxProfitIndex = -1;
+    for (size_t i = 0; i < users.size(); i++) {
+      int u = users[i];
+      
+      int profit = min(end, start + user.rbNeed) - min(end, userStarts[i] + userInfos[u].rbNeed);
+      if (profit > maxProfit) {
+        maxProfit = profit;
+        maxProfitIndex = i;
+      }
+    }
+
+    return { maxProfit, maxProfitIndex };
+  }
 };
 
-/// <summary>
-/// Получить длину интервала
-/// </summary>
 int getIntervalLength(const Interval& i) {
   return i.end - i.start;
 }
 
-/// <summary>
-/// Сортировка пользователей по убыванию требований
-/// </summary>
 bool sortUsersByRbNeedDescending(const UserInfo& u1, const UserInfo& u2) {
   return u1.rbNeed > u2.rbNeed;
 }
@@ -87,11 +119,7 @@ bool sortIntervalsDescending(const Interval& i1, const Interval& i2) {
   return getIntervalLength(i1) > getIntervalLength(i2);
 }
 
-
-/// <summary>
-/// Получить интервалы в которые можно вставлять пользователей
-/// </summary>
-vector<MaskedInterval> getFreeIntervals(const vector<Interval>& reserved, int m) {
+vector<MaskedInterval> GetUnlockedIntervals(const vector<Interval>& reserved, int m) {
   int start = 0;
   vector<MaskedInterval> res;
 
@@ -102,9 +130,7 @@ vector<MaskedInterval> getFreeIntervals(const vector<Interval>& reserved, int m)
     }
   }
 
-  if (start < m) {
-    res.push_back({ start, m });
-  }
+  if (start < m) res.push_back({ start, m });
 
   return res;
 }
@@ -174,6 +200,48 @@ float getLossThresholdMultiplier(int userIndex, int usersCount) {
   return lossThresholdMultiplierA*x*x + lossThresholdMultiplierB;
 }
 
+bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, const vector<UserInfo>& userInfos) {
+  int fitIndex = -1;
+  pair<int, int> maxProfit = { 0, -1 };
+  for (size_t i = 0; i < intervals.size(); i++) {
+    pair<int, int> profit = intervals[i].GetInsertionProfit(user, userInfos);
+    if (profit.first > maxProfit.first) {
+      maxProfit = profit;
+      fitIndex = i;
+    }
+  }
+
+  if (maxProfit.first > replaceThreshold && fitIndex != -1) {
+    intervals[fitIndex].ReplaceUser(user, maxProfit.second, userInfos);
+    return true;
+  }
+
+  return false;
+}
+
+int FindInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int L) {
+  int firstOrShortest = -1;
+  for (size_t i = 0; i < intervals.size(); i++) {
+    auto& interval = intervals[i];
+    if (interval.users.size() >= L) continue;
+    if (interval.HasMaskCollision(user)) continue;
+
+    if (firstOrShortest == -1 || getIntervalLength(interval) >= user.rbNeed)
+      firstOrShortest = i;
+  }
+
+  return firstOrShortest;
+}
+
+void SplitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user,  float ltm, const vector<UserInfo>& userInfos) {
+  for (size_t j = 0; j < intervals.size(); j++) {
+    float lossThreshold = min(getIntervalLength(intervals[j]), user.rbNeed) * ltm;
+    if (TrySplitInterval(intervals, j, lossThreshold, userInfos)) {
+      sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
+      break;
+    }
+  }
+}
 
 /// <summary>
 /// Функция решения задачи
@@ -193,62 +261,52 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
   sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescending);
 
-  vector<MaskedInterval> intervals = getFreeIntervals(reservedRBs, M);
+  vector<MaskedInterval> intervals = GetUnlockedIntervals(reservedRBs, M);
   sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
 
+  vector<UserInfo> failed;
+
   // Какие-то параметры, которые возможно влияют на точность
-  const int maxAttempts = 8;
+  const int maxAttempts = 4;
 
   int attempt = 0;
   size_t userIndex = 0;
   while (userIndex < originalUserInfos.size()) {
+    attempt++;
+    bool inserted = false;
+    const UserInfo& user = userInfos[userIndex];
     float ltm = getLossThresholdMultiplier(userIndex, originalUserInfos.size());
 
-    attempt++;
-    bool fit = false;
+    int firstOrShortest = FindInsertIndex(intervals, user, L);
 
-    int firstValid = -1;
-    int lastGreater = -1;
-    for (size_t i = 0; i < intervals.size(); i++) {
-      auto& interval = intervals[i];
-      if (interval.users.size() >= L) continue;
-      if (!interval.CanAddUser(userInfos[userIndex])) continue;
-
-      if (firstValid == -1) firstValid = i;
-      
-      if (getIntervalLength(interval) >= userInfos[userIndex].rbNeed)
-        lastGreater = i;
+    // если нет пустой ячейки то попробовать заменить что-то
+    if (firstOrShortest == -1) {
+      inserted = TryReplaceUser(intervals, user, 4, originalUserInfos);
+    }
+    else {
+      intervals[firstOrShortest].AddUserSorted(user, intervals[firstOrShortest].start, originalUserInfos);
+      inserted = true;
     }
 
-    if (firstValid >= 0 || lastGreater >= 0) {
-      if (lastGreater >= 0)
-        intervals[lastGreater].AddUserSorted(userInfos[userIndex], intervals[lastGreater].start, originalUserInfos);
-      else
-        intervals[firstValid].AddUserSorted(userInfos[userIndex], intervals[firstValid].start, originalUserInfos);
+    if (inserted || attempt >= maxAttempts) {
+      if (!inserted) failed.push_back(user);
 
-      fit = true;
-    }
-
-    if (fit || attempt >= maxAttempts) {
       attempt = 0;
       userIndex++;
     }
     else {
-      if (intervals.size() < J) {
-        for (size_t j = 0; j < intervals.size(); j++) {
-          float lossThreshold = min(getIntervalLength(intervals[j]), userInfos[userIndex].rbNeed) * ltm;
-          if (TrySplitInterval(intervals, j, lossThreshold, originalUserInfos)) {
-            sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
-            break;
-          }
-        }
-      }
-      else {
-        attempt = maxAttempts + 1;
-      }
+      if (intervals.size() < J) SplitRoutine(intervals, user, ltm, originalUserInfos);
+      else attempt = maxAttempts + 1;
     }
   }
   
+  // последняя попытка вставить
+  for (const auto& user : failed) {
+    TryReplaceUser(intervals, user, 0, originalUserInfos);
+  }
+
+
+  // формируем ответ
   vector<Interval> answer;
   for (size_t i = 0; answer.size() < J && i < intervals.size(); i++) {
     if (intervals[i].users.size() > 0) {
