@@ -67,6 +67,12 @@ float run() {
       totalScore += u.rbNeed;
       outputScore += min(u.rbNeed, userMetrics[u.id]);
     }
+    int maxScore = m;
+    for (auto& res : reserved) {
+      maxScore -= res.end - res.start;
+    }
+    maxScore *= l;
+    totalScore = min(maxScore, totalScore);
     float testScore = outputScore * 100.0f / totalScore;
     allTestsScore += testScore;
 

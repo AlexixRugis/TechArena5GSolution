@@ -88,10 +88,10 @@ struct MaskedInterval {
   }
 
   int ReplaceUser(const UserInfo& u, int index, const vector<UserInfo>& userInfos) {
-    int canBeDeferred = -1;
+    int deferredIndex = -1;
     
     if (index < userStarts.size()) {
-      if (CanBeDeferred(index, userInfos)) canBeDeferred = userStarts[index].first;
+      if (CanBeDeferred(index, userInfos)) deferredIndex = userStarts[index].first;
 
       mask ^= (1 << userInfos[userStarts[index].first].beam);
       userStarts.erase(userStarts.begin() + index);
@@ -99,7 +99,7 @@ struct MaskedInterval {
 
     AddUserSorted(u, start, userInfos);
 
-    return canBeDeferred;
+    return deferredIndex;
   }
 
   pair<int, int> GetInsertionProfit(const UserInfo& user, const vector<UserInfo>& userInfos, int L) const {
