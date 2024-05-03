@@ -87,7 +87,7 @@ struct MaskedInterval {
     int canBeDeferred = -1;
     
     if (index < userStarts.size()) {
-      if (userStarts[index].second == start && userInfos[userStarts[index].first].rbNeed < getLength()) canBeDeferred = userStarts[index].first;
+      if (userStarts[index].second == start && userInfos[userStarts[index].first].rbNeed <= getLength()) canBeDeferred = userStarts[index].first;
 
       mask ^= (1 << userInfos[userStarts[index].first].beam);
       userStarts.erase(userStarts.begin() + index);
@@ -98,7 +98,7 @@ struct MaskedInterval {
     return canBeDeferred;
   }
 
-  pair<int, int> GetInsertionProfit(const UserInfo& user, const vector<UserInfo>& userInfos) const {
+  pair<int, int> GetInsertionProfit(const UserInfo& user, const vector<UserInfo>& userInfos, int L) const {
     if (userStarts.size() == 0) {
       return { min(end - start, user.rbNeed), 0 };
     }
@@ -110,6 +110,10 @@ struct MaskedInterval {
           return { min(end, start + user.rbNeed) - min(end, userStarts[i].second + userInfos[u].rbNeed), i };
         }
       }
+    }
+
+    if (userStarts.size() < L) {
+      return { min(end - start, user.rbNeed), userStarts.size() };
     }
 
     int u = userStarts.back().first;
@@ -207,11 +211,11 @@ float getLossThresholdMultiplier(int userIndex, int usersCount) {
   return lossThresholdMultiplierA*x*x + lossThresholdMultiplierB;
 }
 
-bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, const vector<UserInfo>& userInfos, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
+bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, int L, const vector<UserInfo>& userInfos, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
   int fitIndex = -1;
   pair<int, int> maxProfit = { 0, -1 };
   for (size_t i = 0; i < intervals.size(); i++) {
-    pair<int, int> profit = intervals[i].GetInsertionProfit(user, userInfos);
+    pair<int, int> profit = intervals[i].GetInsertionProfit(user, userInfos, L);
     if (profit.first > maxProfit.first) {
       maxProfit = profit;
       fitIndex = i;
@@ -236,21 +240,24 @@ int FindInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
     if (interval.userStarts.size() >= L) continue;
     if (interval.HasMaskCollision(user)) continue;
 
-    if (firstOrShortest == -1 || interval.getLength() >= user.rbNeed)
+    if (firstOrShortest == -1 || interval.getLength() >= user.rbNeed) {
       firstOrShortest = i;
+    }
   }
 
   return firstOrShortest;
 }
 
-void SplitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user,  float ltm, const vector<UserInfo>& userInfos) {
+bool SplitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user,  float ltm, const vector<UserInfo>& userInfos) {
   for (size_t j = 0; j < intervals.size(); j++) {
     float lossThreshold = min(intervals[j].getLength(), user.rbNeed) * ltm;
     if (TrySplitInterval(intervals, j, lossThreshold, userInfos)) {
       sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
-      break;
+      return true;
     }
   }
+
+  return false;
 }
 
 /// <summary>
@@ -287,23 +294,22 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
     const UserInfo& user = userInfos[userIndex];
     float ltm = getLossThresholdMultiplier(userIndex, originalUserInfos.size());
 
-    int firstOrShortest = FindInsertIndex(intervals, user, L);
+
+
+    int insertionIndex = FindInsertIndex(intervals, user, L);
 
     // если нет пустой ячейки то попробовать заменить что-то
-    if (firstOrShortest == -1) {
-
+    if (insertionIndex == -1) {
       auto it = deferred.begin();
       while (it != deferred.end()) {
-        bool res = TryReplaceUser(intervals, *it, 0, originalUserInfos, deferred, true);
+        bool res = TryReplaceUser(intervals, *it, 0, L, originalUserInfos, deferred, true);
         auto lastIt = it;
         it++;
         if (res) deferred.erase(lastIt);
       }
-
-      inserted = TryReplaceUser(intervals, user, 6, originalUserInfos, deferred, false);
     }
     else {
-      intervals[firstOrShortest].AddUserSorted(user, intervals[firstOrShortest].start, originalUserInfos);
+      intervals[insertionIndex].AddUserSorted(user, intervals[insertionIndex].start, originalUserInfos);
       inserted = true;
     }
 
@@ -314,14 +320,16 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
       userIndex++;
     }
     else {
-      if (intervals.size() < J) SplitRoutine(intervals, user, ltm, originalUserInfos);
+      if (intervals.size() < J) {
+        SplitRoutine(intervals, user, ltm, originalUserInfos);
+      }
       else attempt = maxAttempts + 1;
     }
   }
   
   // последняя попытка вставить
   for (auto& v : deferred) {
-    TryReplaceUser(intervals, v, 0, originalUserInfos, deferred, false);
+    TryReplaceUser(intervals, v, 0, L, originalUserInfos, deferred, false);
   }
 
   // формируем ответ
