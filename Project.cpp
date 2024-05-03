@@ -10,10 +10,10 @@
 using namespace std;
 using namespace std::chrono;
 
-//#define MAX_TESTS 5
-//#define SINGLE_TEST 1000
+#define MAX_TESTS 20
+//#define SINGLE_TEST 2
 
-//#define LOG_ENABLED
+#define LOG_ENABLED
 
 float run() {
   ifstream ifs("open.txt");
@@ -91,36 +91,38 @@ float run() {
 
 int main()
 {
-  float p2 = 0.75f;
-  float l = -1.0f, r = 1.0f;
-  for (int i = 0; i < 10; i++) {
-    float m1 = l + (r - l) / 3;
-    float m2 = l + 2 * (r - l) / 3;
+  //float p2 = 0.75f;
+  //float l = -1.0f, r = 1.0f;
+  //for (int i = 0; i < 10; i++) {
+  //  float m1 = l + (r - l) / 3;
+  //  float m2 = l + 2 * (r - l) / 3;
 
-    SetHyperParams(m1, p2);
-    float r1 = run();
-    SetHyperParams(m2, p2);
-    float r2 = run();
+  //  SetHyperParams(m1, p2);
+  //  float r1 = run();
+  //  SetHyperParams(m2, p2);
+  //  float r2 = run();
 
-    if (r1 < r2) {
-      l = m1;
-    }
-    else {
-      r = m2;
-    }
-  }
+  //  if (r1 < r2) {
+  //    l = m1;
+  //  }
+  //  else {
+  //    r = m2;
+  //  }
+  //}
 
-  cout << (l + r) / 2 << endl;
-  SetHyperParams((l + r) / 2, p2);
+  //cout << (l + r) / 2 << endl;
+  //SetHyperParams((l + r) / 2, p2);
 
-  auto start = high_resolution_clock::now();
+  //auto start = high_resolution_clock::now();
 
-  cout << "Average filled: " << run() << "%\n";
+  //cout << "Average filled: " << run() << "%\n";
 
-  auto stop = high_resolution_clock::now();
-  auto duration = duration_cast<milliseconds>(stop - start);
+  //auto stop = high_resolution_clock::now();
+  //auto duration = duration_cast<milliseconds>(stop - start);
 
-  // double because 1000 of 2000 tests
-  cout << "Time taken by function: "
-    << duration.count() * 2 << " ms" << endl;
+  //// double because 1000 of 2000 tests
+  //cout << "Time taken by function: "
+  //  << duration.count() * 2 << " ms" << endl;
+
+  run();
 }
