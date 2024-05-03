@@ -30,6 +30,9 @@ def parse_test(stdout):
         return None
     
     header = header.split()
+    if len(header) < 4:
+        return None
+    
     test_case = header[1]
     accuracy = header[3]
     
@@ -99,6 +102,7 @@ def render_testcase(testcase: TestCase, realTests):
             col = userColors[us]
             ux1 = PADDING + j*BTW_BLOCK_PADDING + userEnds[us] * BLOCK_WIDTH_SCALE
             ux1 = min(ux1, x1)
+            img1.rectangle(((x0, y0), (x1, y1)), fill='#606060')
             img1.rectangle(((x0, y0), (ux1, y1)), fill=col)
             img1.text((x0 + BTW_BLOCK_PADDING, y0),str(us),(0,0,0),font=font)
     
