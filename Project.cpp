@@ -97,7 +97,7 @@ float run() {
 
 int main()
 {
-  float p2 = 0.75f;
+  float p2 = 0.82f;
   float l = -1.0f, r = 1.0f;
   for (int i = 0; i < 10; i++) {
     float m1 = l + (r - l) / 3;

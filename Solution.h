@@ -11,8 +11,8 @@
 
 using namespace std;
 
-float lossThresholdMultiplierA = 0.0522447f;
-float lossThresholdMultiplierB = 0.75f;
+float lossThresholdMultiplierA = -0.12703f;
+float lossThresholdMultiplierB = 0.82f;
 
 void SetHyperParams(float a, float b) {
   lossThresholdMultiplierA = a;
@@ -214,7 +214,7 @@ bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, float lossTh
 
 float getLossThresholdMultiplier(int userIndex, int usersCount) {
   float x = (float)userIndex / usersCount;
-  return lossThresholdMultiplierA*x*x + lossThresholdMultiplierB;
+  return lossThresholdMultiplierA*x + lossThresholdMultiplierB;
 }
 
 bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, int L, const vector<UserInfo>& userInfos, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
