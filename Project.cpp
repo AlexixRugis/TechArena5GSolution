@@ -88,7 +88,7 @@ float run(bool logs_flag) {
         }
 
         int totalScore = min(maxUserScore, maxTestScore);
-        float testScore = outputScore * 100.0f / maxUserScore;
+        float testScore = outputScore * 100.0f / totalScore;
         allTestsScore += testScore;
 
         if (logs_flag) {
