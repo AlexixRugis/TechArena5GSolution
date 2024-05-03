@@ -247,7 +247,7 @@ int FindInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
     if (interval.userStarts.size() >= L) continue;
     if (interval.HasMaskCollision(user)) continue;
 
-    if (firstOrShortest == -1 || (interval.getLength() >= user.rbNeed && interval.userStarts.size() <= minFill)) {
+    if (interval.getLength() >= user.rbNeed && interval.userStarts.size() <= minFill) {
       firstOrShortest = i;
       minFill = interval.userStarts.size();
     }
@@ -301,8 +301,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
     bool inserted = false;
     const UserInfo& user = userInfos[userIndex];
     float ltm = getLossThresholdMultiplier(userIndex, originalUserInfos.size());
-
-
 
     int insertionIndex = FindInsertIndex(intervals, user, L);
 
