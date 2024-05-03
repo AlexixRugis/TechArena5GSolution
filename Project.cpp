@@ -67,7 +67,7 @@ float run(bool logs_flag) {
         vector<Interval> output = Solver(N, M, K, J, L, reserved, users);
 
         int outputScore = 0;
-        int totalScore = 0;
+        int maxUserScore = 0;
 
         map<int, int> userMetrics;
         for (const auto& interval : output) {
@@ -76,12 +76,19 @@ float run(bool logs_flag) {
             }
         }
 
+        int maxTestScore = M;
+        for (const auto& r : reserved) {
+          maxTestScore -= r.end - r.start;
+        }
+        maxTestScore *= L;
+
         for (const auto& u : users) {
-            totalScore += u.rbNeed;
+            maxUserScore += u.rbNeed;
             outputScore += min(u.rbNeed, userMetrics[u.id]);
         }
 
-        float testScore = outputScore * 100.0f / totalScore;
+        int totalScore = min(maxUserScore, maxTestScore);
+        float testScore = outputScore * 100.0f / maxUserScore;
         allTestsScore += testScore;
 
         if (logs_flag) {
