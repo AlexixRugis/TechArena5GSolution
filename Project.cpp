@@ -4,18 +4,20 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <chrono>
 #include "Solution.h"
 
 using namespace std;
+using namespace std::chrono;
 
-//#define MAX_TESTS 10
+//#define MAX_TESTS 20
+//#define SINGLE_TEST 2
 
 //#define LOG_ENABLED
 
-int main()
-{
+float run() {
   ifstream ifs("open.txt");
-  
+
   int t;
   ifs >> t;
 
@@ -45,6 +47,14 @@ int main()
       users[i].beam = beam;
     }
 
+#ifdef SINGLE_TEST
+
+    if (ti + 1 != SINGLE_TEST) {
+      continue;
+    }
+
+#endif // SINGLE_TEST
+
     vector<Interval> output = Solver(n, m, k, j, l, reserved, users);
 
     int outputScore = 0;
@@ -66,7 +76,7 @@ int main()
     cout << left;
     cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << endl;
     for (const auto& interval : output) {
-      cout << setw(10) << interval.end << setw(10) << interval.end;
+      cout << setw(10) << interval.start << setw(10) << interval.end;
       for (const auto& user : interval.users) {
         cout << user << ' ';
       }
@@ -76,5 +86,43 @@ int main()
 
   }
 
-  cout << "Average filled: " << allTestsScore / t << "%\n";
+  return allTestsScore / t;
+}
+
+int main()
+{
+  float p2 = 0.75f;
+  float l = -1.0f, r = 1.0f;
+  for (int i = 0; i < 10; i++) {
+    float m1 = l + (r - l) / 3;
+    float m2 = l + 2 * (r - l) / 3;
+
+    SetHyperParams(m1, p2);
+    float r1 = run();
+    SetHyperParams(m2, p2);
+    float r2 = run();
+
+    if (r1 < r2) {
+      l = m1;
+    }
+    else {
+      r = m2;
+    }
+  }
+
+  cout << (l + r) / 2 << endl;
+  SetHyperParams((l + r) / 2, p2);
+
+  auto start = high_resolution_clock::now();
+
+  cout << "Average filled: " << run() << "%\n";
+
+  auto stop = high_resolution_clock::now();
+  auto duration = duration_cast<milliseconds>(stop - start);
+
+  // double because 1000 of 2000 tests
+  cout << "Time taken by function: "
+    << duration.count() * 2 << " ms" << endl;
+
+  //cout << "Average filled: " << run() << "%\n";
 }
