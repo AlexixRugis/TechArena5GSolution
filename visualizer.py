@@ -73,11 +73,16 @@ def render_testcase(testcase: TestCase, realTests):
     userColors = [colorutils.Color(hsv=((180 * i / maxUserId), 0.5, 1)).hex for i in range(maxUserId)]
     random.shuffle(userColors)
     
+    userStarts = {}
     userEnds = {}
+    realEnds = {}
     for intvl in testcase.intervals:
         for us in intvl.users:
+            realEnds[us] = intvl.end
             if not us in userEnds:
                 userEnds[us] = intvl.start + testData['users'][us][0]
+            if not us in userStarts:
+                userStarts[us] = intvl.start
     
     start = 0
     end = testData['M']
@@ -90,7 +95,7 @@ def render_testcase(testcase: TestCase, realTests):
     img = Image.new("RGB", (w, h)) 
     img1 = ImageDraw.Draw(img)   
     
-    img1.text((PADDING, PADDING), f'Test {testcase.number} Accuracy {testcase.accuracy}', (255,255,255),font=font)
+    img1.text((PADDING, PADDING), f'Test {testcase.number} Accuracy {testcase.accuracy} Inserted {len(userStarts)} of {maxUserId}', (255,255,255),font=font)
 
     for j, intvl in enumerate(testcase.intervals):
         x0 = PADDING + j*BTW_BLOCK_PADDING + intvl.start * BLOCK_WIDTH_SCALE
@@ -102,9 +107,12 @@ def render_testcase(testcase: TestCase, realTests):
             col = userColors[us]
             ux1 = PADDING + j*BTW_BLOCK_PADDING + userEnds[us] * BLOCK_WIDTH_SCALE
             ux1 = min(ux1, x1)
+            
+            fill = (realEnds[us] - userStarts[us]) / testData['users'][us][0]
+            
             img1.rectangle(((x0, y0), (x1, y1)), fill='#606060')
             img1.rectangle(((x0, y0), (ux1, y1)), fill=col)
-            img1.text((x0 + BTW_BLOCK_PADDING, y0),str(us),(0,0,0),font=font)
+            img1.text((x0 + BTW_BLOCK_PADDING, y0),f'{us} {round(fill, 2)}',(0,0,0),font=font)
     
     img.save(f'Visualization/{testcase.number}.jpg')
     
