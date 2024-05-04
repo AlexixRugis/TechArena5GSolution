@@ -40,7 +40,7 @@ struct UserInfo {
 
 struct UserInfoComparator {
     bool operator()(const UserInfo& a, const UserInfo& b) const {
-        return a.rbNeed < b.rbNeed;
+        return a.rbNeed > b.rbNeed;
     }
 };
 
@@ -407,20 +407,22 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         bool inserted = false;
         const UserInfo& user = userInfos[user_index];
 
-        float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, user_data.size());
         int insertion_index = findInsertIndex(intervals, user, L);
 
         // Eсли нет пустой ячейки то попробовать заменить что-то
         if (insertion_index == -1) {
+            bool success = false;
             auto it = deferred.begin();
             while (it != deferred.end()) {
                 bool result = tryReplaceUser(intervals, *it, 0, 250, L, deferred, true);
                 auto last_it = it;
                 ++it;
                 if (result) {
+                    success = true;
                     deferred.erase(last_it);
                 }
             }
+            if (success) continue;
         }
         else {
             intervals[insertion_index].insertNewUser(user);
@@ -436,6 +438,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         }
         else {
             if (intervals.size() < J) {
+                float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, user_data.size());
                 if (splitRoutine(intervals, user, loss_threshold_multiplier)) {
                     // замена слишком больших пользователей на поменьше
                     auto it = deferred.begin();
