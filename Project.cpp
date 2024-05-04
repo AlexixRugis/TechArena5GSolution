@@ -22,9 +22,9 @@ using namespace std::chrono;
 
 // [START_TEST, END_TEST], 1 <= START_TEST, defines might be commented
 #define START_TEST 1
-#define END_TEST 1
+#define END_TEST 1000
 
-const bool LOGS_ENABLED = true;
+const bool LOGS_ENABLED = false;
 
 float run(bool logs_flag) {
     ifstream in("open.txt");
@@ -78,7 +78,7 @@ float run(bool logs_flag) {
 
         int maxTestScore = M;
         for (const auto& r : reserved) {
-          maxTestScore -= r.end - r.start;
+            maxTestScore -= r.end - r.start;
         }
         maxTestScore *= L;
 
@@ -115,28 +115,6 @@ int main() {
     cin.tie(nullptr);
     cout.tie(nullptr);
 
-    float p2 = 0.75f;
-    float l = -1.0f, r = 1.0f;
-
-    for (int i = 0; i < 10; i++) {
-        float m1 = (2 * l + r) / 3;
-        float m2 = (l + 2 * r) / 3;
-
-        SetHyperParams(m1, p2);
-        float r1 = run(false);
-        SetHyperParams(m2, p2);
-        float r2 = run(false);
-
-        if (r1 < r2) {
-            l = m1;
-        }
-        else {
-            r = m2;
-        }
-    }
-
-    SetHyperParams((l + r) / 2, p2);
-
     auto start = high_resolution_clock::now();
 
     cout << "Average filled: " << run(LOGS_ENABLED) << "%" << '\n';
@@ -145,6 +123,6 @@ int main() {
     auto duration = duration_cast<milliseconds>(stop - start);
 
     // double because 1000 of 2000 tests
-    cout << "Time taken by function: " << duration.count() * 2 << " ms" << '\n';
+    cout << "Time x2 taken by function: " << duration.count() * 2 << " ms" << '\n';
 
 }
