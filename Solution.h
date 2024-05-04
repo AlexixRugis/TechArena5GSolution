@@ -40,7 +40,7 @@ struct UserInfo {
 
 struct UserInfoComparator {
     bool operator()(const UserInfo& a, const UserInfo& b) const {
-        return a.rbNeed > b.rbNeed;
+        return a.rbNeed < b.rbNeed;
     }
 };
 
@@ -264,13 +264,14 @@ float getLossThresholdMultiplier(int user_index, int users_count) {
 bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
     
     int best_index = -1;
-    pair<int, int> best_profit = { INT_MIN, -1 };
+    pair<int, int> best_profit = { 0, -1 };
+
     for (int i = 0; i < intervals.size(); ++i) {
-        pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-        if (profit.first >= best_profit.first) {
-            best_profit = profit;
-            best_index = i;
-        }
+      pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
+      if (profit.first >= best_profit.first) {
+        best_profit = profit;
+        best_index = i;
+      }
     }
 
     if (best_profit.first > replace_threshold && best_index != -1) {
