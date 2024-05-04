@@ -267,11 +267,11 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
     pair<int, int> best_profit = { 0, -1 };
 
     for (int i = 0; i < intervals.size(); ++i) {
-      pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-      if (profit.first >= best_profit.first) {
-        best_profit = profit;
-        best_index = i;
-      }
+        pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
+        if (profit.first >= best_profit.first) {
+            best_profit = profit;
+            best_index = i;
+        }
     }
 
     if (best_profit.first > replace_threshold && best_index != -1) {
@@ -361,7 +361,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 auto last_it = it;
                 ++it;
                 if (result) {
-                    deferred.erase(last_it);
+                deferred.erase(last_it);
                 }
             }
         }
