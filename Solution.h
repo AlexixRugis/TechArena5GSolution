@@ -168,19 +168,21 @@ struct MaskedInterval : public Interval {
             for (int i = 0; i < users.size(); i++) {
                 int user_id = users[i];
                 if (user_data[user_id].beam == user.beam) {
-                    int new_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
-                    if (new_user_bound <= end || !canBeDeferred(i)) return { -1, -1 };
-                    return { max(0, new_user_bound - (start + user.rbNeed)), i};
+                    int old_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
+                    int new_user_bound = start + user.rbNeed;
+                    if (old_user_bound <= end || !canBeDeferred(i)) return { -1, -1 };
+                    return { max(0, old_user_bound - new_user_bound), i};
                 }
             }
         }
 
         for (int i = 0; i < users.size(); i++) {
             int user_id = users[i];
-            int new_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
-            if (new_user_bound <= end) break;
+            int old_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
+            int new_user_bound = start + user.rbNeed;
+            if (old_user_bound <= end) break;
             if (canBeDeferred(i)) {
-                return { max(0, new_user_bound - (start + user.rbNeed)), i };
+                return { max(0, old_user_bound - new_user_bound), i };
             }
         }
 
