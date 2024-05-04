@@ -159,6 +159,33 @@ struct MaskedInterval : public Interval {
 
         return { profit, index };
     }
+
+    pair<int, int> getReduceProfit(const UserInfo& user) const {
+
+        if (user.rbNeed < getLength()) return { -1, -1 };
+
+        if (hasMaskCollision(user)) {
+            for (int i = 0; i < users.size(); i++) {
+                int user_id = users[i];
+                if (user_data[user_id].beam == user.beam) {
+                    int new_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
+                    if (new_user_bound <= end || !canBeDeferred(i)) return { -1, -1 };
+                    return { max(0, new_user_bound - (start + user.rbNeed)), i};
+                }
+            }
+        }
+
+        for (int i = 0; i < users.size(); i++) {
+            int user_id = users[i];
+            int new_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
+            if (new_user_bound <= end) break;
+            if (canBeDeferred(i)) {
+                return { max(0, new_user_bound - (start + user.rbNeed)), i };
+            }
+        }
+
+        return { -1, -1 };
+    }
 };
 
 bool sortUsersByRbNeedDescendingComp(const UserInfo& U1, const UserInfo& U2) {
@@ -287,6 +314,32 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
     return false;
 }
 
+bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, set<UserInfo, UserInfoComparator>& deferred) {
+
+    int best_index = -1;
+    pair<int, int> best_profit = { 0, -1 };
+
+    for (int i = 0; i < intervals.size(); ++i) {
+        pair<int, int> profit = intervals[i].getReduceProfit(user);
+        if (profit.first > best_profit.first) {
+            best_profit = profit;
+            best_index = i;
+        }
+    }
+
+    if (best_profit.first > replace_threshold && best_index != -1) {
+        int deferred_index = intervals[best_index].replaceUser(user, best_profit.second);
+        if (deferred_index == -1) {
+            throw "Error in the function \"tryReduceUser\": deferred_index == -1";
+        }
+
+        deferred.insert(user_data[deferred_index]);
+        return true;
+    }
+
+    return false;
+}
+
 int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int L) {
 
     int first_or_shortest = -1;
@@ -381,7 +434,18 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         }
         else {
             if (intervals.size() < J) {
-                splitRoutine(intervals, user, loss_threshold_multiplier);
+                if (splitRoutine(intervals, user, loss_threshold_multiplier)) {
+                    // замена слишком больших пользователей на поменьше
+                    auto it = deferred.begin();
+                    while (it != deferred.end()) {
+                        bool result = tryReduceUser(intervals, *it, 0, deferred);
+                        auto last_it = it;
+                        ++it;
+                        if (result) {
+                            deferred.erase(last_it);
+                        }
+                    }
+                }
             }
             else {
                 attempt = max_attempts + 1;
@@ -392,6 +456,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     // Последняя попытка вставить
     for (int i = 0; i < max_attempts; ++i) {
 
+        // довставить
         auto it = deferred.begin();
         while (it != deferred.end()) {
             bool result = tryReplaceUser(intervals, *it, 0, 10000, L, deferred, true);
