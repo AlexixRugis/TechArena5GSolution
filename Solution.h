@@ -14,6 +14,8 @@ using namespace std;
 float lossThresholdMultiplierA = -0.12703f;
 float lossThresholdMultiplierB = 0.82f;
 
+vector<pair<int, int>> userIntervals;
+
 void SetHyperParams(float a, float b) {
   lossThresholdMultiplierA = a;
   lossThresholdMultiplierB = b;
@@ -38,12 +40,8 @@ struct UserInfoComparator {
   }
 };
 
-struct MaskedInterval {
-  int start;
-  int end;
+struct MaskedInterval : public Interval {
   unsigned int mask;
-  
-  vector<pair<int, int>> userStarts;
 
   MaskedInterval(int start_, int end_) {
     start = start_;
@@ -59,70 +57,79 @@ struct MaskedInterval {
     return (mask & (1 << u.beam)) != 0;
   }
 
-  void AddUserUnordered(const UserInfo& u, int userStart) {
-    userStarts.push_back({ u.id, userStart });
+  void InsertSplitUser(const UserInfo& u) {
+    users.push_back(u.id);
     mask |= (1 << u.beam);
   }
 
-  void AddUserSorted(const UserInfo& u, int userStart, const vector<UserInfo>& userInfos) {
+  void InsertNewUser(const UserInfo& u, const vector<UserInfo>& userInfos) {
+    if (userIntervals[u.id].first != -1) throw -1;
+
     // вставка с сортировкой
     int i = 0;
-    for (; i < userStarts.size(); i++) {
-      int newUserBound = min(end, userStart + u.rbNeed);
-      int oldUserBound = min(end, userStarts[i].second + userInfos[userStarts[i].first].rbNeed);
+    for (; i < users.size(); i++) {
+      int newUserBound = min(end, start + u.rbNeed);
+      int oldUserBound = min(end, userIntervals[users[i]].second);
       if (newUserBound >= oldUserBound) break;
     }
 
-    if (i == userStarts.size()) {
-      userStarts.push_back({ u.id, userStart });
-    }
-    else {
-      userStarts.insert(userStarts.begin() + i, { u.id, userStart });
-    }
+    if (i == users.size())
+      users.push_back(u.id);
+    else
+      users.insert(users.begin() + i, u.id);
 
+    userIntervals[u.id] = { start, min(end, start + u.rbNeed) };
     mask |= (1 << u.beam);
   }
 
   bool CanBeDeferred(int userIndex, const vector<UserInfo>& userInfos) const {
-    return userStarts[userIndex].second == start && userInfos[userStarts[userIndex].first].rbNeed <= getLength();
+    int u = users[userIndex];
+    return userIntervals[u].first == start && userIntervals[u].second <= end;
   }
 
   int ReplaceUser(const UserInfo& u, int index, const vector<UserInfo>& userInfos) {
     int deferredIndex = -1;
     
-    if (index < userStarts.size()) {
-      if (CanBeDeferred(index, userInfos)) deferredIndex = userStarts[index].first;
+    if (index < users.size()) {
+      if (CanBeDeferred(index, userInfos)) deferredIndex = users[index];
 
-      mask ^= (1 << userInfos[userStarts[index].first].beam);
-      userStarts.erase(userStarts.begin() + index);
+      int u = users[index];
+      if (userIntervals[u].second > end) throw -1;
+      if (userIntervals[u].first < start)
+        userIntervals[u].second = start; // оставили только левую часть
+      else
+        userIntervals[u] = { -1, -1 }; // пользователь удален полностью
+
+      mask ^= (1 << userInfos[u].beam);
+      users.erase(users.begin() + index);
     }
 
-    AddUserSorted(u, start, userInfos);
+    InsertNewUser(u, userInfos);
 
     return deferredIndex;
   }
 
   pair<int, int> GetInsertionProfit(const UserInfo& user, const vector<UserInfo>& userInfos, int L) const {
-    if (userStarts.size() == 0) {
+    if (users.size() == 0) {
       return { min(end - start, user.rbNeed), 0 };
     }
 
     if (HasMaskCollision(user)) {
-      for (size_t i = 0; i < userStarts.size(); i++) {
-        int u = userStarts[i].first;
+      for (size_t i = 0; i < users.size(); i++) {
+        int u = users[i];
         if (userInfos[u].beam == user.beam) {
-          return { min(end, start + user.rbNeed) - min(end, userStarts[i].second + userInfos[u].rbNeed), i };
+          return { min(end, start + user.rbNeed) - min(end, userIntervals[u].second), i};
         }
       }
     }
 
-    if (userStarts.size() < L) {
-      return { min(end - start, user.rbNeed), userStarts.size() };
+    if (users.size() < L) {
+      return { min(end - start, user.rbNeed), users.size() };
     }
 
-    int u = userStarts.back().first;
-    int index = userStarts.size() - 1;
-    int profit = min(end, start + user.rbNeed) - min(end, userStarts[userStarts.size() - 1].second + userInfos[u].rbNeed);
+    int u = users.back();
+    int index = users.size() - 1;
+    int profit = min(end, start + user.rbNeed) - min(end, userIntervals[u].second);
 
     return { profit, index };
   }
@@ -154,7 +161,7 @@ vector<MaskedInterval> GetUnlockedIntervals(const vector<Interval>& reserved, in
 
 size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold, const vector<UserInfo>& users) {
   size_t startSplitIndex = 0;
-  for (; startSplitIndex < interval.userStarts.size(); startSplitIndex++) {
+  for (; startSplitIndex < interval.users.size(); startSplitIndex++) {
     /*
     \         |
      \        |
@@ -168,7 +175,7 @@ size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold, const 
     до разделения округление было вправо для всех
     */
 
-    int loss = interval.end - min(interval.end, interval.userStarts[startSplitIndex].second + users[interval.userStarts[startSplitIndex].first].rbNeed);
+    int loss = interval.end - min(interval.end, userIntervals[interval.users[startSplitIndex]].second);
     if (loss > lossThreshold) {
       break;
     }
@@ -183,27 +190,27 @@ size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold, const 
 /// |-----|    |-----|
 /// |-----|    |-----|
 /// </summary>
-bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, float lossThreshold, const vector<UserInfo>& users) {
+bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, float lossThreshold, const vector<UserInfo>& userInfos) {
   MaskedInterval& interval = intervals[index];
   int intLen = interval.getLength();
   if (intLen < 2) return false;
 
-  size_t startSplitIndex = GetSplitIndex(interval, lossThreshold, users);
-  if (startSplitIndex == interval.userStarts.size()) return false;
+  size_t startSplitIndex = GetSplitIndex(interval, lossThreshold, userInfos);
+  if (startSplitIndex == interval.users.size()) return false;
 
-  int midPos = interval.userStarts[startSplitIndex].second + users[interval.userStarts[startSplitIndex].first].rbNeed;
+  int midPos = userIntervals[interval.users[startSplitIndex]].second;
   if (midPos <= interval.start || midPos >= interval.end) return false;
 
   MaskedInterval intL(interval.start, midPos);
   MaskedInterval intR(midPos, interval.end);
 
   for (size_t i = 0; i < startSplitIndex; i++) {
-    intL.AddUserUnordered(users[interval.userStarts[i].first], interval.userStarts[i].second);
-    intR.AddUserUnordered(users[interval.userStarts[i].first], interval.userStarts[i].second);
+    intL.InsertSplitUser(userInfos[interval.users[i]]);
+    intR.InsertSplitUser(userInfos[interval.users[i]]);
   }
 
-  for (size_t i = startSplitIndex; i < interval.userStarts.size(); i++) {
-    intL.AddUserUnordered(users[interval.userStarts[i].first], interval.userStarts[i].second);
+  for (size_t i = startSplitIndex; i < interval.users.size(); i++) {
+    intL.InsertSplitUser(userInfos[interval.users[i]]);
   }
 
   intervals[index] = intL;
@@ -244,12 +251,12 @@ int FindInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
   int minFill = INT_MAX;
   for (size_t i = 0; i < intervals.size(); i++) {
     auto& interval = intervals[i];
-    if (interval.userStarts.size() >= L) continue;
+    if (interval.users.size() >= L) continue;
     if (interval.HasMaskCollision(user)) continue;
 
-    if (interval.getLength() >= user.rbNeed && interval.userStarts.size() <= minFill) {
+    if (interval.getLength() >= user.rbNeed && interval.users.size() <= minFill) {
       firstOrShortest = i;
-      minFill = interval.userStarts.size();
+      minFill = interval.users.size();
     }
   }
 
@@ -286,6 +293,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
   sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescending);
 
+  userIntervals.assign(userInfos.size(), { -1, -1 });
+
   vector<MaskedInterval> intervals = GetUnlockedIntervals(reservedRBs, M);
   sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
 
@@ -315,7 +324,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
       }
     }
     else {
-      intervals[insertionIndex].AddUserSorted(user, intervals[insertionIndex].start, originalUserInfos);
+      intervals[insertionIndex].InsertNewUser(user, originalUserInfos);
       inserted = true;
     }
 
@@ -353,14 +362,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
   // формируем ответ
   vector<Interval> answer;
   for (size_t i = 0; answer.size() < J && i < intervals.size(); i++) {
-    if (intervals[i].userStarts.size() > 0) {
-      Interval intl;
-      intl.start = intervals[i].start;
-      intl.end = intervals[i].end;
-      for (auto v : intervals[i].userStarts) {
-        intl.users.push_back(v.first);
-      }
-      answer.push_back(intl);
+    if (intervals[i].users.size() > 0) {
+      answer.push_back(intervals[i]);
     }
   }
 
