@@ -50,7 +50,7 @@ struct MaskedInterval : public Interval {
     mask = 0;
   }
 
-  int getLength() const {
+  int GetLength() const {
     return end - start;
   }
 
@@ -140,10 +140,10 @@ bool sortUsersByRbNeedDescending(const UserInfo& u1, const UserInfo& u2) {
 }
 
 bool sortIntervalsDescending(const MaskedInterval& i1, const MaskedInterval& i2) {
-  return i1.getLength() > i2.getLength();
+  return i1.GetLength() > i2.GetLength();
 }
 
-vector<MaskedInterval> GetUnlockedIntervals(const vector<Interval>& reserved, int m) {
+vector<MaskedInterval> GetNonReservedIntervals(const vector<Interval>& reserved, int m) {
   int start = 0;
   vector<MaskedInterval> res;
 
@@ -192,7 +192,7 @@ size_t GetSplitIndex(const MaskedInterval& interval, float lossThreshold) {
 /// </summary>
 bool TrySplitInterval(vector<MaskedInterval>& intervals, int index, float lossThreshold) {
   MaskedInterval& interval = intervals[index];
-  int intLen = interval.getLength();
+  int intLen = interval.GetLength();
   if (intLen < 2) return false;
 
   size_t startSplitIndex = GetSplitIndex(interval, lossThreshold);
@@ -226,7 +226,7 @@ float getLossThresholdMultiplier(int userIndex, int usersCount) {
 
 bool TryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replaceThreshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
   int fitIndex = -1;
-  pair<int, int> maxProfit = { 0, -1 };
+  pair<int, int> maxProfit = { INT_MIN, -1 };
   for (size_t i = 0; i < intervals.size(); i++) {
     pair<int, int> profit = intervals[i].GetInsertionProfit(user, L);
     if (profit.first >= maxProfit.first) {
@@ -254,7 +254,7 @@ int FindInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
     if (interval.users.size() >= L) continue;
     if (interval.HasMaskCollision(user)) continue;
 
-    if (interval.getLength() >= user.rbNeed && interval.users.size() <= minFill) {
+    if (interval.GetLength() >= user.rbNeed && interval.users.size() <= minFill) {
       firstOrShortest = i;
       minFill = interval.users.size();
     }
@@ -265,7 +265,7 @@ int FindInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
 
 bool SplitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user,  float ltm) {
   for (size_t j = 0; j < intervals.size(); j++) {
-    float lossThreshold = min(intervals[j].getLength(), user.rbNeed) * ltm;
+    float lossThreshold = min(intervals[j].GetLength(), user.rbNeed) * ltm;
     if (TrySplitInterval(intervals, j, lossThreshold)) {
       sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
       return true;
@@ -295,7 +295,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L,
 
   userIntervals.assign(userInfos.size(), { -1, -1 });
 
-  vector<MaskedInterval> intervals = GetUnlockedIntervals(reservedRBs, M);
+  vector<MaskedInterval> intervals = GetNonReservedIntervals(reservedRBs, M);
   sort(intervals.begin(), intervals.end(), sortIntervalsDescending);
 
   set<UserInfo, UserInfoComparator> deferred;
