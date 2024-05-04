@@ -261,14 +261,16 @@ float getLossThresholdMultiplier(int user_index, int users_count) {
     return loss_threshold_multiplier_A * x + loss_threshold_multiplier_B;
 }
 
-bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
+bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int overfill_threshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
     
     int best_index = -1;
     pair<int, int> best_profit = { 0, -1 };
 
     for (int i = 0; i < intervals.size(); ++i) {
+        int overfill = user.rbNeed - intervals[i].getLength();
+        if (overfill > overfill_threshold) continue;
         pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-        if (profit.first >= best_profit.first) {
+        if (profit.first > best_profit.first) {
             best_profit = profit;
             best_index = i;
         }
@@ -357,11 +359,11 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         if (insertion_index == -1) {
             auto it = deferred.begin();
             while (it != deferred.end()) {
-                bool result = tryReplaceUser(intervals, *it, 0, L, deferred, true);
+                bool result = tryReplaceUser(intervals, *it, 0, 250, L, deferred, true);
                 auto last_it = it;
                 ++it;
                 if (result) {
-                deferred.erase(last_it);
+                    deferred.erase(last_it);
                 }
             }
         }
@@ -392,7 +394,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
         auto it = deferred.begin();
         while (it != deferred.end()) {
-            bool result = tryReplaceUser(intervals, *it, 0, L, deferred, true);
+            bool result = tryReplaceUser(intervals, *it, 0, 10000, L, deferred, true);
             auto last_it = it;
             ++it;
             if (result) {
