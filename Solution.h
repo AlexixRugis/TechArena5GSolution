@@ -242,6 +242,26 @@ int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
     return start_split_index;
 }
 
+pair<int, int> getSplitPositionAndIndex(vector<MaskedInterval>& intervals, int index, float loss_threshold) {
+    MaskedInterval& interval = intervals[index];
+    int length = interval.getLength();
+    if (length < 2) {
+        return { -1, -1 };
+    }
+
+    int start_split_index = getSplitIndex(interval, loss_threshold);
+    if (start_split_index == interval.users.size()) {
+        return { -1, -1 };
+    }
+
+    int middle_position = user_intervals[interval.users[start_split_index]].second;
+    if (middle_position <= interval.start || middle_position >= interval.end) {
+        return { -1, -1 };
+    }
+
+    return { middle_position, start_split_index };
+}
+
 /// <summary>
 /// Разделяет интервал для экономии места, при этом счёт не уменьшается
 /// |-----|    |--|  |
@@ -251,22 +271,12 @@ int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
 /// </summary>
 bool trySplitInterval(vector<MaskedInterval>& intervals, int index, float loss_threshold) {
 
+    pair<int, int> split = getSplitPositionAndIndex(intervals, index, loss_threshold);
+    int middle_position = split.first;
+    int start_split_index = split.second;
+    if (middle_position == -1) return false;
+
     MaskedInterval& interval = intervals[index];
-    int length = interval.getLength();
-    if (length < 2) {
-        return false;
-    }
-
-    int start_split_index = getSplitIndex(interval, loss_threshold);
-    if (start_split_index == interval.users.size()) {
-        return false;
-    }
-
-    int middle_position = user_intervals[interval.users[start_split_index]].second;
-    if (middle_position <= interval.start || middle_position >= interval.end) {
-        return false;
-    }
-
     MaskedInterval intL(interval.start, middle_position);
     MaskedInterval intR(middle_position, interval.end);
 
@@ -293,14 +303,15 @@ float getLossThresholdMultiplier(int user_index, int users_count) {
 bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int overfill_threshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
     
     int best_index = -1;
-    pair<int, int> best_profit = { 0, -1 };
+    pair<float, int> best_profit = { 0, -1 };
 
     for (int i = 0; i < intervals.size(); ++i) {
         int overfill = user.rbNeed - intervals[i].getLength();
         if (overfill > overfill_threshold) continue;
         pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-        if (profit.first > best_profit.first) {
-            best_profit = profit;
+        float scaledProfit = profit.first / (1.0f + 0.30f*((float)i / intervals.size()));
+        if (scaledProfit > best_profit.first) {
+            best_profit = { scaledProfit, profit.second };
             best_index = i;
         }
     }
@@ -360,16 +371,24 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
     return first_or_shortest;
 }
 
-bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
-
+int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
     for (int i = 0; i < intervals.size(); ++i) {
-
-        float lossThreshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
-        if (trySplitInterval(intervals, i, lossThreshold)) {
-            sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
-            return true;
+        float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
+        if (getSplitPositionAndIndex(intervals, i, loss_threshold).first != -1) {
+            return i;
         }
     }
+    return -1;
+}
+
+bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
+
+    int index = findIntervalToSplit(intervals, user, loss_threshold_multiplier);
+    if (index == -1) return -1;
+
+    float lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
+    trySplitInterval(intervals, index, lossThreshold);
+    sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
     return false;
 }
@@ -393,7 +412,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
-
+    
     set<UserInfo, UserInfoComparator> deferred;
 
     // Какие-то параметры, которые возможно влияют на точность
@@ -401,7 +420,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     int attempt = 0;
 
     int user_index = 0;
-    while (user_index < user_data.size()) {
+    while (user_index < userInfos.size()) {
 
         attempt++;
         bool inserted = false;
@@ -439,8 +458,9 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         else {
             if (intervals.size() < J) {
                 float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, user_data.size());
-                if (splitRoutine(intervals, user, loss_threshold_multiplier)) {
-                    // замена слишком больших пользователей на поменьше
+
+                // заменить слишком больших пользователей на тех кто поменьше и разделить
+                if (findIntervalToSplit(intervals, user, loss_threshold_multiplier) != -1) {
                     auto it = deferred.begin();
                     while (it != deferred.end()) {
                         bool result = tryReduceUser(intervals, *it, 0, deferred);
@@ -450,11 +470,22 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                             deferred.erase(last_it);
                         }
                     }
+                    splitRoutine(intervals, user, loss_threshold_multiplier);
                 }
             }
             else {
                 attempt = max_attempts + 1;
             }
+        }
+    }
+
+    auto it = deferred.begin();
+    while (it != deferred.end()) {
+        bool result = tryReduceUser(intervals, *it, 0, deferred);
+        auto last_it = it;
+        ++it;
+        if (result) {
+            deferred.erase(last_it);
         }
     }
 

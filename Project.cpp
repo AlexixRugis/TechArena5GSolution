@@ -22,9 +22,9 @@ using namespace std::chrono;
 
 // [START_TEST, END_TEST], 1 <= START_TEST, defines might be commented
 #define START_TEST 1
-#define END_TEST 20
+#define END_TEST 1000
 
-const bool LOGS_ENABLED = true;
+const bool LOGS_ENABLED = false;
 
 float run(bool logs_flag) {
     ifstream in("open.txt");
