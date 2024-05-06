@@ -384,7 +384,8 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
 }
 
 int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
-    int biggest_loss = 0;
+    // loss
+    /*int biggest_loss = 0;
     int biggest_loss_index = 0;
     for (int i = 0; i < intervals.size(); i++) {
         int loss = intervals[i].getLoss();
@@ -393,15 +394,30 @@ int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user,
             biggest_loss_index = i;
         }
     }
-    return biggest_loss_index;
+    return biggest_loss_index;*/
 
-    for (int i = 0; i < intervals.size(); ++i) {
+    int minPosition = 1000;
+    int optimal_intex = -1;
+    for (int i = 0; i < intervals.size(); i++) {
+        float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
+        auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
+        if (res.first != -1) {
+            if (res.second < minPosition) {
+                minPosition = res.second;
+                optimal_intex = i;
+            }
+        }
+    }
+    return optimal_intex;
+
+    // biggest
+    /*for (int i = 0; i < intervals.size(); ++i) {
         float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
         if (getSplitPositionAndIndex(intervals, i, loss_threshold).first != -1) {
             return i;
         }
     }
-    return -1;
+    return -1;*/
 }
 
 bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
