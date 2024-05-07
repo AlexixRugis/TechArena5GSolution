@@ -384,17 +384,6 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
 }
 
 int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
-    // loss
-    /*int biggest_loss = 0;
-    int biggest_loss_index = 0;
-    for (int i = 0; i < intervals.size(); i++) {
-        int loss = intervals[i].getLoss();
-        if (loss > biggest_loss) {
-            biggest_loss = loss;
-            biggest_loss_index = i;
-        }
-    }
-    return biggest_loss_index;*/
 
     int minPosition = 1000;
     int optimal_intex = -1;
@@ -409,15 +398,6 @@ int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user,
         }
     }
     return optimal_intex;
-
-    // biggest
-    /*for (int i = 0; i < intervals.size(); ++i) {
-        float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
-        if (getSplitPositionAndIndex(intervals, i, loss_threshold).first != -1) {
-            return i;
-        }
-    }
-    return -1;*/
 }
 
 bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
@@ -716,84 +696,3 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Interval> 
 
     return answer;
 }
-
-
-//
-//vector<bool> user_inserted(userInfos.size());
-//
-//for (int i = 0; i < 32; i++) {
-//    int replacements_count = 0;
-//    for (auto& interval : intervals) {
-//        for (int i = 0; i <= L; i++) {
-//            {
-//                pair<float, int> best_profit = { 0, -1 };
-//                int best_index = -1;
-//                for (auto& user : userInfos) {
-//                    if (user_inserted[user.id]) continue;
-//
-//                    pair<int, int> profit = interval.getInsertionProfit(user, L);
-//                    if (profit.first >= best_profit.first) {
-//                        best_profit = profit;
-//                        best_index = user.id;
-//                    }
-//                }
-//
-//                // insert
-//                if (best_profit.first > 0) {
-//                    int deferred_index = interval.replaceUser(user_data[best_index], best_profit.second);
-//                    user_inserted[best_index] = true;
-//                    if (deferred_index >= 0) user_inserted[deferred_index] = false;
-//                    replacements_count++;
-//                }
-//            }
-//
-//            {
-//                pair<float, int> best_profit = { 0, -1 };
-//                int best_index = -1;
-//                for (auto& user : userInfos) {
-//                    if (user_inserted[user.id]) continue;
-//
-//                    pair<int, int> profit = interval.getReduceProfit(user);
-//                    if (profit.first >= best_profit.first) {
-//                        best_profit = profit;
-//                        best_index = user.id;
-//                    }
-//                }
-//
-//                // reduce
-//                if (best_profit.first > 0) {
-//                    int deferred_index = interval.replaceUser(user_data[best_index], best_profit.second);
-//                    user_inserted[best_index] = true;
-//                    if (deferred_index >= 0) user_inserted[deferred_index] = false;
-//                    replacements_count++;
-//
-//                }
-//            }
-//        }
-//    }
-//
-//    if (replacements_count != 0) continue;
-//
-//    if (intervals.size() > J) break;
-//
-//    int biggest_loss = 0;
-//    int biggest_loss_index = 0;
-//    for (int i = 0; i < intervals.size(); i++) {
-//        int loss = intervals[i].getLoss();
-//        if (loss > biggest_loss) {
-//            biggest_loss = loss;
-//            biggest_loss_index = i;
-//        }
-//    }
-//
-//    bool success = false;
-//    for (auto& user : userInfos) {
-//        if (user_inserted[user.id]) continue;
-//
-//        float loss_threshold_multiplier = getLossThresholdMultiplier(0, userInfos.size());
-//        if (trySplitInterval(intervals, biggest_loss_index, user.rbNeed)) {
-//            success = true;
-//            break;
-//        }
-//    }
-//}
