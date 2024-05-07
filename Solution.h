@@ -43,7 +43,7 @@ struct UserInfoComparator {
     }
 };
 
-float loss_threshold_multiplier_A = -0.171f;
+float loss_threshold_multiplier_A = -0.172f;
 float loss_threshold_multiplier_B = 0.906f;
 
 map<int, int> test_metrics;
@@ -379,7 +379,7 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
         auto& interval = intervals[i];
         if (interval.users.size() >= L || interval.hasMaskCollision(user)) continue;
 
-        if (interval.getLength() >= user.rbNeed && interval.users.size() <= min_filled) {
+        if (interval.getLength() >= user.rbNeed && interval.users.size() < min_filled) {
             first_or_shortest = i;
             min_filled = (int)interval.users.size();
         }
@@ -388,18 +388,18 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
     return first_or_shortest;
 }
 
-int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
+int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier, int L) {
 
-    int minPosition = 1000;
-    int maxSize = 0;
+    float minPosition = 1000;
     int optimal_index = -1;
     for (int i = 0; i < intervals.size(); i++) {
-        float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
+        float loss_threshold = user.rbNeed * loss_threshold_multiplier;
         auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
+
         if (res.first != -1) {
-            if (res.second < minPosition || res.second == minPosition && intervals[i].getLength() > maxSize) {
-                minPosition = res.second;
-                maxSize = intervals[i].getLength();
+            float value = res.second;
+            if (value < minPosition) {
+                minPosition = value;
                 optimal_index = i;
             }
         }
@@ -412,6 +412,7 @@ bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int i
         throw "Error in the function \"splitRoutine\": index == -1";
     }
 
+    // здесь почему то нужно ограничивать а при поиске нет, надо бы разобраться почему
     float lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
     trySplitInterval(intervals, index, lossThreshold);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
@@ -641,7 +642,11 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
         int insertion_index = findInsertIndex(intervals, user, L);
 
         // Eсли нет пустой ячейки то попробовать заменить что-то
-        if (insertion_index == -1) {
+        if (insertion_index >= 0) {
+            intervals[insertion_index].insertNewUser(user);
+            inserted = true;
+        }
+        else {
             bool success = false;
             auto it = deferred.begin();
             while (it != deferred.end()) {
@@ -654,10 +659,6 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
                 }
             }
             if (success) continue;
-        }
-        else {
-            intervals[insertion_index].insertNewUser(user);
-            inserted = true;
         }
 
         if (inserted || attempt >= max_attempts) {
@@ -672,7 +673,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
                 float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, (int)user_data.size());
 
                 // Заменить слишком больших пользователей на тех кто поменьше и разделить
-                int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier);
+                int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier, L);
                 if (split_index != -1) {
                     auto it = deferred.begin();
                     while (it != deferred.end()) {
@@ -732,7 +733,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier((int)user_data.size() - (int)deferred.size(), (int)user_data.size());
 
-        int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier);
+        int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier, L);
         if (split_index >= 0) {       
             splitRoutine(intervals, *deferred.begin(), split_index, loss_threshold_multiplier);
         }
