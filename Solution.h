@@ -400,9 +400,7 @@ int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user,
     return optimal_intex;
 }
 
-bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
-
-    int index = findIntervalToSplit(intervals, user, loss_threshold_multiplier);
+bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int index, float loss_threshold_multiplier) {
     if (index == -1) return -1;
 
     float lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
@@ -412,7 +410,7 @@ bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float
     return false;
 }
 
-vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos);
+vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<UserInfo>& userInfos);
 
 float checker(int N, int M, int K, int J, int L, const vector<Interval> &reserved, const vector<Interval> &output) {
     int outputScore = 0;
@@ -459,10 +457,13 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     user_data = userInfos;
 
+    vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
+    sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
+
     // Просчёт с просто отсортированными отрезками
     vector<UserInfo> userInfosMy = userInfos;
     sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
-    vector<Interval> result = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    vector<Interval> result = realSolver(N, M, K, J, L, intervals, userInfosMy);
     int best_value = checker(N, M, K, J, L, reservedRBs, result);
 
     // Попытки улучшить
@@ -477,7 +478,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             swap(userInfosMy[i], userInfosMy[i + 1]);
         }
     }
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -492,7 +493,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             swap(userInfosMy[i], userInfosMy[i + 2]);
         }
     }
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -502,7 +503,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#4 +0.02
     userInfosMy = userInfos;
     random_shuffle(userInfosMy.begin(), userInfosMy.end());
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -518,7 +519,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             swap(userInfosMy[i + 1], userInfosMy[i + 3]);
         }
     }
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -534,7 +535,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             random_shuffle(it6, it6 + 5);
         }
     }
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -550,7 +551,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             random_shuffle(it7, it7 + 3);
         }
     }
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -566,7 +567,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             random_shuffle(it8, it8 + 3);
         }
     }
-    temp = realSolver(N, M, K, J, L, reservedRBs, userInfosMy);
+    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
         best_value = curr_value;
@@ -576,13 +577,9 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     return result;
 }
 
-vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
+vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> intervals, const vector<UserInfo>& userInfos) {
 
     user_intervals.assign(userInfos.size(), { -1, -1 });
-
-    vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
-    sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
-
 
     set<UserInfo, UserInfoComparator> deferred;
 
@@ -631,7 +628,8 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Interval> 
                 float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, user_data.size());
 
                 // заменить слишком больших пользователей на тех кто поменьше и разделить
-                if (findIntervalToSplit(intervals, user, loss_threshold_multiplier) != -1) {
+                int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier);
+                if (split_index != -1) {
                     auto it = deferred.begin();
                     while (it != deferred.end()) {
                         bool result = tryReduceUser(intervals, *it, 0, deferred);
@@ -641,7 +639,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Interval> 
                             deferred.erase(last_it);
                         }
                     }
-                    splitRoutine(intervals, user, loss_threshold_multiplier);
+                    splitRoutine(intervals, user, split_index, loss_threshold_multiplier);
                 }
             }
             else {
@@ -676,7 +674,8 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Interval> 
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier(user_data.size() - deferred.size(), user_data.size());
 
-        if (!splitRoutine(intervals, *deferred.begin(), loss_threshold_multiplier)) {
+        int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier);
+        if (split_index == -1 || !splitRoutine(intervals, *deferred.begin(), split_index, loss_threshold_multiplier)) {
             deferred.erase(deferred.begin());
         }
     }
