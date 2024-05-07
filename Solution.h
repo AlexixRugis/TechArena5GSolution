@@ -653,7 +653,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
             user_index++;
         }
         else {
-            if (intervals.size() < J) {
+            if (intervals[0].getLength() >= user_infos[user_index].rbNeed && intervals.size() < J) {
                 float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, user_data.size());
 
                 // заменить слишком больших пользователей на тех кто поменьше и разделить
