@@ -48,12 +48,18 @@ struct UserInfoComparator {
 float loss_threshold_multiplier_A = -0.171f;
 float loss_threshold_multiplier_B = 0.906f;
 
+map<int, int> test_metrics;
+
 vector<UserInfo> user_data;
 vector<pair<int, int>> user_intervals;
 
 void setHyperParams(float a, float b) {
     loss_threshold_multiplier_A = a;
     loss_threshold_multiplier_B = b;
+}
+
+map<int, int> getTestMetrics() {
+    return test_metrics;
 }
 
 struct MaskedInterval : public Interval {
@@ -460,6 +466,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
+    int best_test_index = 1;
+
     // Просчёт с просто отсортированными отрезками
     vector<UserInfo> userInfosMy = userInfos;
     sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
@@ -481,6 +489,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 2;
         best_value = curr_value;
         result = temp;
     }
@@ -496,6 +505,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 3;
         best_value = curr_value;
         result = temp;
     }
@@ -506,6 +516,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 4;
         best_value = curr_value;
         result = temp;
     }
@@ -522,6 +533,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 5;
         best_value = curr_value;
         result = temp;
     }
@@ -538,6 +550,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 6;
         best_value = curr_value;
         result = temp;
     }
@@ -554,6 +567,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 7;
         best_value = curr_value;
         result = temp;
     }
@@ -570,16 +584,19 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
+        best_test_index = 8;
         best_value = curr_value;
         result = temp;
     }
 
+    test_metrics[best_test_index]++;
+
     return result;
 }
 
-vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> intervals, const vector<UserInfo>& userInfos) {
+vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> intervals, const vector<UserInfo>& user_infos) {
 
-    user_intervals.assign(userInfos.size(), { -1, -1 });
+    user_intervals.assign(user_infos.size(), { -1, -1 });
 
     set<UserInfo, UserInfoComparator> deferred;
 
@@ -588,11 +605,16 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
     int attempt = 0;
 
     int user_index = 0;
-    while (user_index < userInfos.size()) {
+    /*while (user_infos[user_index].rbNeed > intervals[0].getLength() + 15) {
+        deferred.insert(user_infos[user_index]);
+        user_index++;
+    }*/
+
+    while (user_index < user_infos.size()) {
 
         attempt++;
         bool inserted = false;
-        const UserInfo& user = userInfos[user_index];
+        const UserInfo& user = user_infos[user_index];
 
         int insertion_index = findInsertIndex(intervals, user, L);
 
@@ -640,11 +662,12 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
                         }
                     }
                     splitRoutine(intervals, user, split_index, loss_threshold_multiplier);
+                    continue;
                 }
             }
-            else {
-                attempt = max_attempts + 1;
-            }
+
+            // так плохо писать, но код выполнится только если разделение не произошло
+            attempt = max_attempts + 1;
         }
     }
 

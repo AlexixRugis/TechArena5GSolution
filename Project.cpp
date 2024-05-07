@@ -125,4 +125,10 @@ int main() {
     // double because 1000 of 2000 tests
     cout << "Time x2 taken by function: " << duration.count() * 2 << " ms" << '\n';
 
+    cout << "Bests: " << endl;
+    auto metrics = getTestMetrics();
+    for (auto& p : metrics) {
+        cout << p.first << ": " << p.second << endl;
+    }
+
 }
