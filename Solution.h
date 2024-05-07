@@ -668,7 +668,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
             ++user_index;
         }
         else {
-            if (intervals[0].getLength() >= user_infos[user_index].rbNeed && intervals.size() < J) {
+            if (intervals[0].getLength() > user_infos[user_index].rbNeed && intervals.size() < J) {
                 float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, (int)user_data.size());
 
                 // Заменить слишком больших пользователей на тех кто поменьше и разделить
@@ -693,34 +693,50 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
         }
     }
 
-    auto it = deferred.begin();
-    while (it != deferred.end()) {
-        bool result = tryReduceUser(intervals, *it, 0, deferred);
-        auto last_it = it;
-        ++it;
-        if (result) {
-            deferred.erase(last_it);
+    // оптимизация перезаполнения
+    {
+        int max_cycles = 100;
+        while (max_cycles--) {
+            bool success = false;
+            auto it = deferred.begin();
+            while (it != deferred.end()) {
+                bool result = tryReduceUser(intervals, *it, 0, deferred);
+                auto last_it = it;
+                ++it;
+                if (result) {
+                    deferred.erase(last_it);
+                    success = true;
+                }
+            }
+            if (!success) break;
         }
     }
 
     // Последняя попытка вставить
-    for (int i = 0; i < max_attempts; ++i) {
+    for (int i = 0; i < 5 * max_attempts; ++i) {
 
         // довставить
+        bool success = false;
         auto it = deferred.begin();
         while (it != deferred.end()) {
             bool result = tryReplaceUser(intervals, *it, 0, 10000, L, deferred, true);
             auto last_it = it;
             ++it;
             if (result) {
+                success = true;
                 deferred.erase(last_it);
             }
         }
+        if (success) continue;
+
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier((int)user_data.size() - (int)deferred.size(), (int)user_data.size());
 
         int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier);
-        if (split_index == -1 || !splitRoutine(intervals, *deferred.begin(), split_index, loss_threshold_multiplier)) {
+        if (split_index >= 0) {       
+            splitRoutine(intervals, *deferred.begin(), split_index, loss_threshold_multiplier);
+        }
+        else {
             deferred.erase(deferred.begin());
         }
     }
