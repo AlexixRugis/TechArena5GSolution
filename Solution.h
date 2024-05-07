@@ -472,10 +472,10 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     vector<UserInfo> userInfosMy = userInfos;
     sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
     vector<Interval> result = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    int best_value = checker(N, M, K, J, L, reservedRBs, result);
+    float best_value = checker(N, M, K, J, L, reservedRBs, result);
 
     // Попытки улучшить
-    int curr_value = 0;
+    float curr_value = 0;
     vector<Interval> temp;
 
     //#2  +0.07
@@ -512,7 +512,13 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     //#4 +0.02
     userInfosMy = userInfos;
-    random_shuffle(userInfosMy.begin(), userInfosMy.end());
+    sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+    for (int i = 0; i < userInfosMy.size(); i += 5) {
+        if (i + 4 < userInfosMy.size()) {
+            swap(userInfosMy[i], userInfosMy[i + 4]);
+            swap(userInfosMy[i + 1], userInfosMy[i + 3]);
+        }
+    }
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
     if (curr_value > best_value) {
@@ -524,10 +530,11 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#5 +0.08
     userInfosMy = userInfos;
     sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
-    for (int i = 0; i < userInfosMy.size(); i += 5) {
-        if (i + 4 < userInfosMy.size()) {
-            swap(userInfosMy[i], userInfosMy[i + 4]);
-            swap(userInfosMy[i + 1], userInfosMy[i + 3]);
+    for (int i = 0; i < userInfosMy.size(); i += 7) {
+        if (i + 6 < userInfosMy.size()) {
+            swap(userInfosMy[i], userInfosMy[i + 6]);
+            swap(userInfosMy[i + 1], userInfosMy[i + 5]);
+            swap(userInfosMy[i + 2], userInfosMy[i + 4]);
         }
     }
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
@@ -605,11 +612,6 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
     int attempt = 0;
 
     int user_index = 0;
-    /*while (user_infos[user_index].rbNeed > intervals[0].getLength() + 15) {
-        deferred.insert(user_infos[user_index]);
-        user_index++;
-    }*/
-
     while (user_index < user_infos.size()) {
 
         attempt++;
