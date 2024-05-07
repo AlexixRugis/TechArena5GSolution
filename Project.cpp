@@ -42,7 +42,7 @@ float run(bool logs_flag) {
     __cnt_of_tests__ = END_TEST;
 #endif // END_TEST
 
-    float allTestsScore = 0.0f;
+    float all_tests_score = 0.0f;
     for (int __test_case__ = __start_test__; __test_case__ < __cnt_of_tests__; __test_case__++) {
         int N, M, K, J, L;
         in >> N >> M >> K >> J >> L;
@@ -66,33 +66,33 @@ float run(bool logs_flag) {
 
         vector<Interval> output = Solver(N, M, K, J, L, reserved, users);
 
-        int outputScore = 0;
-        int maxUserScore = 0;
+        int output_score = 0;
+        int max_user_score = 0;
 
-        map<int, int> userMetrics;
+        map<int, int> user_metrics;
         for (const auto& interval : output) {
-            for (auto u : interval.users) {
-                userMetrics[u] += interval.end - interval.start;
+            for (int user_id : interval.users) {
+                user_metrics[user_id] += interval.end - interval.start;
             }
         }
 
-        int maxTestScore = M;
-        for (const auto& r : reserved) {
-            maxTestScore -= r.end - r.start;
+        int max_test_score = M;
+        for (const auto& R : reserved) {
+            max_test_score -= R.end - R.start;
         }
-        maxTestScore *= L;
+        max_test_score *= L;
 
-        for (const auto& u : users) {
-            maxUserScore += u.rbNeed;
-            outputScore += min(u.rbNeed, userMetrics[u.id]);
+        for (const auto& U : users) {
+            max_user_score += U.rbNeed;
+            output_score += min(U.rbNeed, user_metrics[U.id]);
         }
 
-        int totalScore = min(maxUserScore, maxTestScore);
-        float testScore = outputScore * 100.0f / totalScore;
-        allTestsScore += testScore;
+        int total_score = min(max_user_score, max_test_score);
+        float test_score = output_score * 100.0f / total_score;
+        all_tests_score += test_score;
 
         if (logs_flag) {
-            cout << "Test: " << __test_case__ + 1 << " Filled: " << testScore << "%" << '\n';
+            cout << "Test: " << __test_case__ + 1 << " Filled: " << test_score << "%" << '\n';
             cout << "Intervals: " << output.size() << '\n' << left;
             cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
 
@@ -106,8 +106,30 @@ float run(bool logs_flag) {
         }
     }
 
-    return allTestsScore / (__cnt_of_tests__ - __start_test__);
+    return all_tests_score / (__cnt_of_tests__ - __start_test__);
 }
+
+/*
+07.05 ~21:00
+
+1)  max_attempts было 4, стало 3, точность улучшилась.
+    (Возможно, ближе к концу контеста нужно будет заново перебрать оптимальные
+     значения этих параметров:
+        max_attempts
+        loss_threshold_multiplier_A
+        loss_threshold_multiplier_B )
+
+
+2)  Переработал некоторые последовательности запусков, они теперь вносят больший вклад;
+    в лучшем случае сейчас может достичь 94.6%, если увеличить число итераций у random_shuffle
+
+3)  Произошёл небольшой рефакторинг кода
+
+4)  Добавил try/catch, чтобы в случае чего ничего не легло
+
+5) В начале функции solve добавил параметр bool random_enable
+
+*/
 
 int main() {
 
@@ -115,14 +137,19 @@ int main() {
     cin.tie(nullptr);
     cout.tie(nullptr);
 
-    auto start = high_resolution_clock::now();
+    auto start_time = high_resolution_clock::now();
 
     cout << "Average filled: " << run(LOGS_ENABLED) << "%" << '\n';
 
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(stop - start);
+    auto stop_time = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop_time - start_time);
 
     // double because 1000 of 2000 tests
     cout << "Time x2 taken by function: " << duration.count() * 2 << " ms" << '\n';
 
+    cout << "Bests: " << '\n';
+    auto metrics = getTestMetrics();
+    for (const auto& p : metrics) {
+        cout << p.first << ": " << p.second << '\n';
+    }
 }

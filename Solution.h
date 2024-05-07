@@ -1,6 +1,4 @@
 ﻿#pragma once
-// Одновременно должно быть включено что-то одно
-//#pragma GCC target("avx2")
 #pragma optimize("O3")
 
 #include <iostream>
@@ -28,7 +26,7 @@ struct Interval {
     int start, end;
     vector<int> users;
 
-    Interval(): start(0), end(0) {}
+    Interval() : start(0), end(0) {}
     Interval(int start, int end) : start(start), end(end) {}
 };
 
@@ -48,6 +46,8 @@ struct UserInfoComparator {
 float loss_threshold_multiplier_A = -0.171f;
 float loss_threshold_multiplier_B = 0.906f;
 
+map<int, int> test_metrics;
+
 vector<UserInfo> user_data;
 vector<pair<int, int>> user_intervals;
 
@@ -56,10 +56,14 @@ void setHyperParams(float a, float b) {
     loss_threshold_multiplier_B = b;
 }
 
+map<int, int>& getTestMetrics() {
+    return test_metrics;
+}
+
 struct MaskedInterval : public Interval {
 
     unsigned int mask = 0;
-    MaskedInterval(int start, int end): Interval(start, end) {}
+    MaskedInterval(int start, int end) : Interval(start, end) {}
 
     int getLength() const {
         return end - start;
@@ -90,7 +94,7 @@ struct MaskedInterval : public Interval {
 
         // Вставка с сортировкой
         int i = 0;
-        for (; i < users.size(); i++) {
+        for (; i < users.size(); ++i) {
             int new_user_bound = min(end, start + user.rbNeed);
             int old_user_bound = min(end, user_intervals[users[i]].second);
             if (new_user_bound >= old_user_bound) {
@@ -105,7 +109,7 @@ struct MaskedInterval : public Interval {
             users.insert(users.begin() + i, user.id);
         }
 
-        user_intervals[user.id] = {start, min(end, start + user.rbNeed)};
+        user_intervals[user.id] = { start, min(end, start + user.rbNeed) };
         mask |= (1 << user.beam);
     }
 
@@ -152,7 +156,7 @@ struct MaskedInterval : public Interval {
         }
 
         if (hasMaskCollision(user)) {
-            for (int i = 0; i < users.size(); i++) {
+            for (int i = 0; i < users.size(); ++i) {
                 int user_id = users[i];
                 if (user_data[user_id].beam == user.beam) {
                     return { min(end, start + user.rbNeed) - min(end, user_intervals[user_id].second), i };
@@ -164,7 +168,7 @@ struct MaskedInterval : public Interval {
             return { min(end - start, user.rbNeed), users.size() };
         }
 
-        int index = users.size() - 1;
+        int index = (int)users.size() - 1;
         int profit = min(end, start + user.rbNeed) - min(end, user_intervals[users.back()].second);
 
         return { profit, index };
@@ -175,18 +179,18 @@ struct MaskedInterval : public Interval {
         if (user.rbNeed < getLength()) return { -1, -1 };
 
         if (hasMaskCollision(user)) {
-            for (int i = 0; i < users.size(); i++) {
+            for (int i = 0; i < users.size(); ++i) {
                 int user_id = users[i];
                 if (user_data[user_id].beam == user.beam) {
                     int old_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
                     int new_user_bound = start + user.rbNeed;
                     if (old_user_bound <= end || !canBeDeferred(i)) return { -1, -1 };
-                    return { max(0, old_user_bound - new_user_bound), i};
+                    return { max(0, old_user_bound - new_user_bound), i };
                 }
             }
         }
 
-        for (int i = 0; i < users.size(); i++) {
+        for (int i = 0; i < users.size(); ++i) {
             int user_id = users[i];
             int old_user_bound = user_intervals[user_id].first + user_data[user_id].rbNeed;
             int new_user_bound = start + user.rbNeed;
@@ -211,19 +215,19 @@ bool sortIntervalsDescendingComp(const MaskedInterval& I1, const MaskedInterval&
 vector<MaskedInterval> getNonReservedIntervals(const vector<Interval>& reserved, int M) {
 
     int start = 0;
-    vector<MaskedInterval> res;
-    for (size_t i = 0; i < reserved.size(); i++) {
+    vector<MaskedInterval> result;
+    for (int i = 0; i < reserved.size(); ++i) {
         if (start < reserved[i].start) {
-            res.push_back(MaskedInterval(start, reserved[i].start));
+            result.push_back(MaskedInterval(start, reserved[i].start));
             start = reserved[i].end;
         }
     }
 
     if (start < M) {
-        res.push_back({ start, M });
+        result.push_back({ start, M });
     }
 
-    return res;
+    return result;
 }
 
 int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
@@ -311,7 +315,7 @@ float getLossThresholdMultiplier(int user_index, int users_count) {
 }
 
 bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int overfill_threshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
-    
+
     int best_index = -1;
     int best_overfill = INT_MAX;
     pair<float, int> best_profit = { 0, -1 };
@@ -320,8 +324,9 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
         int overfill = user.rbNeed - intervals[i].getLength();
         if (overfill > overfill_threshold) continue;
         pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-        float scaledProfit = profit.first / (1.0f + 0.30f*((float)i / intervals.size()));
-        if (scaledProfit > best_profit.first || scaledProfit > best_profit.first && overfill < best_overfill) {
+        float coef = 0.5f + 0.5f * sqrt(sqrt(1.1f - (float)i / intervals.size()));
+        float scaledProfit = profit.first * coef;
+        if (scaledProfit > best_profit.first || scaledProfit == best_profit.first && overfill < best_overfill) {
             best_overfill = overfill;
             best_profit = { scaledProfit, profit.second };
             best_index = i;
@@ -376,7 +381,7 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
 
         if (interval.getLength() >= user.rbNeed && interval.users.size() <= min_filled) {
             first_or_shortest = i;
-            min_filled = interval.users.size();
+            min_filled = (int)interval.users.size();
         }
     }
 
@@ -384,52 +389,65 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
 }
 
 int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
-    // loss
-    /*int biggest_loss = 0;
-    int biggest_loss_index = 0;
-    for (int i = 0; i < intervals.size(); i++) {
-        int loss = intervals[i].getLoss();
-        if (loss > biggest_loss) {
-            biggest_loss = loss;
-            biggest_loss_index = i;
-        }
-    }
-    return biggest_loss_index;*/
 
     int minPosition = 1000;
-    int optimal_intex = -1;
+    int maxSize = 0;
+    int optimal_index = -1;
     for (int i = 0; i < intervals.size(); i++) {
         float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
         auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
         if (res.first != -1) {
-            if (res.second < minPosition) {
+            if (res.second < minPosition || res.second == minPosition && intervals[i].getLength() > maxSize) {
                 minPosition = res.second;
-                optimal_intex = i;
+                maxSize = intervals[i].getLength();
+                optimal_index = i;
             }
         }
     }
-    return optimal_intex;
-
-    // biggest
-    /*for (int i = 0; i < intervals.size(); ++i) {
-        float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
-        if (getSplitPositionAndIndex(intervals, i, loss_threshold).first != -1) {
-            return i;
-        }
-    }
-    return -1;*/
+    return optimal_index;
 }
 
-bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
-
-    int index = findIntervalToSplit(intervals, user, loss_threshold_multiplier);
-    if (index == -1) return -1;
+bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int index, float loss_threshold_multiplier) {
+    if (index == -1) {
+        throw "Error in the function \"splitRoutine\": index == -1";
+    }
 
     float lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
     trySplitInterval(intervals, index, lossThreshold);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
     return false;
+}
+
+vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<UserInfo>& userInfos);
+
+float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserved, const vector<Interval>& output) {
+    
+    int output_score = 0;
+    int max_user_score = 0;
+
+    unordered_map<int, int> user_metrics;
+    for (const auto& interval : output) {
+        for (int user_id : interval.users) {
+            user_metrics[user_id] += interval.end - interval.start;
+        }
+    }
+
+    int max_test_score = M;
+    for (const auto& R : reserved) {
+        max_test_score -= R.end - R.start;
+    }
+    max_test_score *= L;
+
+    for (const auto& U : user_data) {
+        max_user_score += U.rbNeed;
+        output_score += min(U.rbNeed, user_metrics[U.id]);
+    }
+
+    int totalScore = min(max_user_score, max_test_score);
+    float testScore = output_score * 100.0f / (float)totalScore;
+
+    return testScore;
 }
 
 /// <summary>
@@ -445,27 +463,180 @@ bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, float
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
+    bool random_enable = true;
+
+    srand((unsigned int)time(0));
+
     user_data = userInfos;
-    sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescendingComp);
-    user_intervals.assign(userInfos.size(), { -1, -1 });
 
     vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
-    
+    int best_test_index = 1;
+
+    float best_value = 0;
+    vector<UserInfo> userInfosMy;
+    vector<Interval> result;
+
+    // Просчёт с просто отсортированными отрезками
+    try {
+        userInfosMy = userInfos;
+        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+        result = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        best_value = checker(N, M, K, J, L, reservedRBs, result);
+    }
+    catch (...) {}
+
+    // Попытки улучшить
+    float curr_value = 0;
+    vector<Interval> temp;
+
+    //#2 - Инверсия блоков длины 4 в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+        for (int i = 0; i < userInfosMy.size(); i += 4) {
+            if (i + 3 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 3]);
+                swap(userInfosMy[i + 1], userInfosMy[i + 2]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 2;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
+
+    //#3 - Свапы соседних в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+        for (int i = 0; i < userInfosMy.size(); i += 2) {
+            if (i + 1 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 1]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 3;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
+
+    //#4 - Инверсия блоков длины 3 в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+        for (int i = 0; i < userInfosMy.size(); i += 3) {
+            if (i + 2 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 2]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 4;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
+
+    //#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+        for (int i = 0; i < userInfosMy.size(); i += 6) {
+            if (i + 5 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 5]);
+                //swap(userInfosMy[i + 1], userInfosMy[i + 4]);
+                swap(userInfosMy[i + 2], userInfosMy[i + 3]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 5;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
+
+    //#6 - random_shuffle блоков длины curr_size = 5 в отсортированном массиве
+    try {
+        int curr_size = 5;
+        for (int j = 0; j < 3 && random_enable; j++) {
+            userInfosMy = userInfos;
+            sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+            auto it = userInfosMy.begin();
+            for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
+                if (i + curr_size < userInfosMy.size()) {
+                    random_shuffle(it, it + curr_size);
+                }
+            }
+            temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+            curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+            if (curr_value > best_value) {
+                best_test_index = 6;
+                best_value = curr_value;
+                result = temp;
+            }
+        }
+    }
+    catch (...) {}
+
+    //#7 - random_shuffle блоков длины user.size() / 4 в отсортированном массиве
+    try {
+        for (int j = 0; j < 3 && random_enable; j++) {
+            userInfosMy = userInfos;
+            sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+            auto it = userInfosMy.begin();
+            int d = max(2, (int)userInfos.size() / 4);
+            for (int i = 0; i < userInfosMy.size(); i += d, it += d) {
+                if (i + d < userInfosMy.size()) {
+                    random_shuffle(it, it + d);
+                }
+            }
+            temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+            curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+            if (curr_value > best_value) {
+                best_test_index = 7;
+                best_value = curr_value;
+                result = temp;
+            }
+        }
+    }
+    catch (...) {}
+
+    ++test_metrics[best_test_index];
+
+    return result;
+}
+
+vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> intervals, const vector<UserInfo>& user_infos) {
+
+    user_intervals.assign(user_infos.size(), { -1, -1 });
 
     set<UserInfo, UserInfoComparator> deferred;
 
     // Какие-то параметры, которые возможно влияют на точность
-    const int max_attempts = 4;
+    const int max_attempts = 3;
     int attempt = 0;
 
     int user_index = 0;
-    while (user_index < userInfos.size()) {
+    while (user_index < user_infos.size()) {
 
-        attempt++;
+        ++attempt;
         bool inserted = false;
-        const UserInfo& user = userInfos[user_index];
+        const UserInfo& user = user_infos[user_index];
 
         int insertion_index = findInsertIndex(intervals, user, L);
 
@@ -494,14 +665,15 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 deferred.insert(user);
             }
             attempt = 0;
-            user_index++;
+            ++user_index;
         }
         else {
-            if (intervals.size() < J) {
-                float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, user_data.size());
+            if (intervals[0].getLength() >= user_infos[user_index].rbNeed && intervals.size() < J) {
+                float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, (int)user_data.size());
 
-                // заменить слишком больших пользователей на тех кто поменьше и разделить
-                if (findIntervalToSplit(intervals, user, loss_threshold_multiplier) != -1) {
+                // Заменить слишком больших пользователей на тех кто поменьше и разделить
+                int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier);
+                if (split_index != -1) {
                     auto it = deferred.begin();
                     while (it != deferred.end()) {
                         bool result = tryReduceUser(intervals, *it, 0, deferred);
@@ -511,12 +683,13 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                             deferred.erase(last_it);
                         }
                     }
-                    splitRoutine(intervals, user, loss_threshold_multiplier);
+                    splitRoutine(intervals, user, split_index, loss_threshold_multiplier);
+                    continue;
                 }
             }
-            else {
-                attempt = max_attempts + 1;
-            }
+
+            // Так плохо писать, но код выполнится, только если разделение не произошло
+            attempt = max_attempts + 1;
         }
     }
 
@@ -544,9 +717,10 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             }
         }
         if (intervals.size() >= J || deferred.size() == 0) break;
-        float loss_threshold_multiplier = getLossThresholdMultiplier(user_data.size() - deferred.size(), user_data.size());
+        float loss_threshold_multiplier = getLossThresholdMultiplier((int)user_data.size() - (int)deferred.size(), (int)user_data.size());
 
-        if (!splitRoutine(intervals, *deferred.begin(), loss_threshold_multiplier)) {
+        int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier);
+        if (split_index == -1 || !splitRoutine(intervals, *deferred.begin(), split_index, loss_threshold_multiplier)) {
             deferred.erase(deferred.begin());
         }
     }
@@ -565,85 +739,4 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     }
 
     return answer;
-} 
-
-
-//
-//vector<bool> user_inserted(userInfos.size());
-//
-//for (int i = 0; i < 32; i++) {
-//    int replacements_count = 0;
-//    for (auto& interval : intervals) {
-//        for (int i = 0; i <= L; i++) {
-//            {
-//                pair<float, int> best_profit = { 0, -1 };
-//                int best_index = -1;
-//                for (auto& user : userInfos) {
-//                    if (user_inserted[user.id]) continue;
-//
-//                    pair<int, int> profit = interval.getInsertionProfit(user, L);
-//                    if (profit.first >= best_profit.first) {
-//                        best_profit = profit;
-//                        best_index = user.id;
-//                    }
-//                }
-//
-//                // insert
-//                if (best_profit.first > 0) {
-//                    int deferred_index = interval.replaceUser(user_data[best_index], best_profit.second);
-//                    user_inserted[best_index] = true;
-//                    if (deferred_index >= 0) user_inserted[deferred_index] = false;
-//                    replacements_count++;
-//                }
-//            }
-//
-//            {
-//                pair<float, int> best_profit = { 0, -1 };
-//                int best_index = -1;
-//                for (auto& user : userInfos) {
-//                    if (user_inserted[user.id]) continue;
-//
-//                    pair<int, int> profit = interval.getReduceProfit(user);
-//                    if (profit.first >= best_profit.first) {
-//                        best_profit = profit;
-//                        best_index = user.id;
-//                    }
-//                }
-//
-//                // reduce
-//                if (best_profit.first > 0) {
-//                    int deferred_index = interval.replaceUser(user_data[best_index], best_profit.second);
-//                    user_inserted[best_index] = true;
-//                    if (deferred_index >= 0) user_inserted[deferred_index] = false;
-//                    replacements_count++;
-//
-//                }
-//            }
-//        }
-//    }
-//
-//    if (replacements_count != 0) continue;
-//
-//    if (intervals.size() > J) break;
-//
-//    int biggest_loss = 0;
-//    int biggest_loss_index = 0;
-//    for (int i = 0; i < intervals.size(); i++) {
-//        int loss = intervals[i].getLoss();
-//        if (loss > biggest_loss) {
-//            biggest_loss = loss;
-//            biggest_loss_index = i;
-//        }
-//    }
-//
-//    bool success = false;
-//    for (auto& user : userInfos) {
-//        if (user_inserted[user.id]) continue;
-//
-//        float loss_threshold_multiplier = getLossThresholdMultiplier(0, userInfos.size());
-//        if (trySplitInterval(intervals, biggest_loss_index, user.rbNeed)) {
-//            success = true;
-//            break;
-//        }
-//    }
-//}
+}
