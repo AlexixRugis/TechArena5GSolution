@@ -326,8 +326,9 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
         int overfill = user.rbNeed - intervals[i].getLength();
         if (overfill > overfill_threshold) continue;
         pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-        float scaledProfit = profit.first / (1.0f + 0.30f * ((float)i / intervals.size()));
-        if (scaledProfit > best_profit.first || scaledProfit > best_profit.first && overfill < best_overfill) {
+        float coef = 0.5f + 0.5f * sqrt(sqrt(1.1f - (float)i / intervals.size()));
+        float scaledProfit = profit.first * coef;
+        if (scaledProfit > best_profit.first || scaledProfit == best_profit.first && overfill < best_overfill) {
             best_overfill = overfill;
             best_profit = { scaledProfit, profit.second };
             best_index = i;
@@ -392,18 +393,20 @@ int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int
 int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier) {
 
     int minPosition = 1000;
-    int optimal_intex = -1;
+    int maxSize = 0;
+    int optimal_index = -1;
     for (int i = 0; i < intervals.size(); i++) {
         float loss_threshold = min(intervals[i].getLength(), user.rbNeed) * loss_threshold_multiplier;
         auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
         if (res.first != -1) {
-            if (res.second < minPosition) {
+            if (res.second < minPosition || res.second == minPosition && intervals[i].getLength() > maxSize) {
                 minPosition = res.second;
-                optimal_intex = i;
+                maxSize = intervals[i].getLength();
+                optimal_index = i;
             }
         }
     }
-    return optimal_intex;
+    return optimal_index;
 }
 
 bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int index, float loss_threshold_multiplier) {
@@ -539,27 +542,29 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     }
     temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
     curr_value = checker(N, M, K, J, L, reservedRBs, temp);
-    if (curr_value > best_value) {
+    if (curr_value > best_value) { 
         best_test_index = 5;
         best_value = curr_value;
         result = temp;
     }
 
     //#6 +0.02
-    userInfosMy = userInfos;
-    sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
-    auto it6 = userInfosMy.begin();
-    for (int i = 0; i < userInfosMy.size(); i += 5, it6 += 5) {
-        if (i + 4 < userInfosMy.size()) {
-            random_shuffle(it6, it6 + 5);
+    for (int i = 0; i < 3; i++) {
+        userInfosMy = userInfos;
+        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
+        auto it6 = userInfosMy.begin(); 
+        for (int i = 0; i < userInfosMy.size(); i += 5, it6 += 5) {
+            if (i + 4 < userInfosMy.size()) {
+                random_shuffle(it6, it6 + 5);
+            }
         }
-    }
-    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    curr_value = checker(N, M, K, J, L, reservedRBs, temp);
-    if (curr_value > best_value) {
-        best_test_index = 6;
-        best_value = curr_value;
-        result = temp;
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 6;
+            best_value = curr_value;
+            result = temp;
+        }
     }
 
     //#7 +?
