@@ -46,7 +46,7 @@ struct UserInfoComparator {
 float loss_threshold_multiplier_A = -0.172f;
 float loss_threshold_multiplier_B = 0.906f;
 
-map<int, int> test_metrics;
+unordered_map<int, int> test_metrics;
 
 vector<UserInfo> user_data;
 
@@ -57,7 +57,7 @@ void setHyperParams(float a, float b) {
     loss_threshold_multiplier_B = b;
 }
 
-map<int, int>& getTestMetrics() {
+unordered_map<int, int>& getTestMetrics() {
     return test_metrics;
 }
 
@@ -90,8 +90,8 @@ struct MaskedInterval : public Interval {
         // Вставка с сортировкой
         int i = 0;
         for (; i < users.size(); ++i) {
-            int new_user_bound = min(end, start + user.rbNeed);
-            int old_user_bound = min(end, user_intervals[users[i]].second);
+            int new_user_bound = start + user.rbNeed;
+            int old_user_bound = user_intervals[users[i]].second;
             if (new_user_bound >= old_user_bound) {
                 break;
             }
@@ -149,9 +149,6 @@ struct MaskedInterval : public Interval {
     }
 
     pair<int, int> getInsertionProfit(const UserInfo& user, int L) const {
-        if (users.size() == 0) {
-            return { min(end - start, user.rbNeed), 0 };
-        }
 
         if (hasMaskCollision(user)) {
             int index = mask_indices[user.beam];
@@ -477,7 +474,7 @@ float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserve
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = false;
 
     srand((unsigned int)time(0));
 
