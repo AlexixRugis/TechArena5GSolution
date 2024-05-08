@@ -63,6 +63,8 @@ map<int, int>& getTestMetrics() {
 struct MaskedInterval : public Interval {
 
     unsigned int mask = 0;
+    int mask_indices[32];
+
     MaskedInterval(int start, int end) : Interval(start, end) {}
 
     int getLength() const {
@@ -76,6 +78,7 @@ struct MaskedInterval : public Interval {
     void insertSplitUser(const UserInfo& user) {
         users.push_back(user.id);
         mask |= (1 << user.beam);
+        mask_indices[user.beam] = users.size() - 1;
     }
 
     int getLoss() const {
@@ -109,8 +112,11 @@ struct MaskedInterval : public Interval {
             users.insert(users.begin() + i, user.id);
         }
 
+
         user_intervals[user.id] = { start, min(end, start + user.rbNeed) };
+
         mask |= (1 << user.beam);
+        for (int i = 0; i < users.size(); ++i) mask_indices[user_data[users[i]].beam] = i;
     }
 
     bool canBeDeferred(int user_index) const {
@@ -156,12 +162,9 @@ struct MaskedInterval : public Interval {
         }
 
         if (hasMaskCollision(user)) {
-            for (int i = 0; i < users.size(); ++i) {
-                int user_id = users[i];
-                if (user_data[user_id].beam == user.beam) {
-                    return { min(end, start + user.rbNeed) - min(end, user_intervals[user_id].second), i };
-                }
-            }
+            int index = mask_indices[user.beam];
+            int user_id = users[index];
+            return { min(end, start + user.rbNeed) - min(end, user_intervals[user_id].second), index };
         }
 
         if (users.size() < L) {
@@ -324,7 +327,13 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
         int overfill = user.rbNeed - intervals[i].getLength();
         if (overfill > overfill_threshold) continue;
         pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
-        float coef = 0.5f + 0.5f * sqrt(sqrt(1.1f - (float)i / intervals.size()));
+        float x = (float)i / intervals.size();
+        x *= x;
+        x *= x;
+        x *= x;
+        x *= x;
+        x *= x;
+        float coef = 0.5f + -x;
         float scaledProfit = profit.first * coef;
         if (scaledProfit > best_profit.first || scaledProfit == best_profit.first && overfill < best_overfill) {
             best_overfill = overfill;
@@ -464,7 +473,7 @@ float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserve
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = false;
 
     srand((unsigned int)time(0));
 
@@ -714,7 +723,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
     }
 
     // Последняя попытка вставить
-    for (int i = 0; i < 5 * max_attempts; ++i) {
+    for (int i = 0; i < 10 * max_attempts; ++i) {
 
         // довставить
         bool success = false;
