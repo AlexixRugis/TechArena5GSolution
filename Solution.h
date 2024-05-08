@@ -82,15 +82,6 @@ struct MaskedInterval : public Interval {
         mask_indices[user.beam] = users.size() - 1;
     }
 
-    int getLoss() const {
-        int loss = 0;
-        for (int user : users) {
-            loss += end - min(end, user_intervals[user].second);
-        }
-
-        return loss;
-    }
-
     void insertNewUser(const UserInfo& user) {
         if (user_intervals[user.id].first != -1) {
             throw "Error in the function \"insertNewUser\": user_intervals[user.id].first == -1";
@@ -213,7 +204,17 @@ bool sortUsersByRbNeedDescendingComp(const UserInfo& U1, const UserInfo& U2) {
 }
 
 bool sortIntervalsDescendingComp(const MaskedInterval& I1, const MaskedInterval& I2) {
-    return I1.getLength() > I2.getLength();
+
+    int l1 = I1.getLength(), l2 = I2.getLength();
+
+    if (l1 == l2) {
+        int users1 = I1.users.size(), users2 = I2.users.size();
+        if (users1 == users2) return I1.end < I2.end;
+
+        return users1 > users2;
+    }
+
+    return l1 > l2;
 }
 
 vector<MaskedInterval> getNonReservedIntervals(const vector<Interval>& reserved, int M) {
@@ -307,9 +308,9 @@ bool trySplitInterval(vector<MaskedInterval>& intervals, int index, float loss_t
         intL.insertSplitUser(user_data[interval.users[i]]);
     }
 
-    intervals.erase(intervals.begin() + index);
+    
+    intervals[index] = intR;
     intervals.push_back(intL);
-    intervals.push_back(intR);
 
     return true;
 }
@@ -418,21 +419,6 @@ int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user,
     return optimal_index;
 }
 
-void sortIntervals(std::vector<MaskedInterval>& arr)
-{
-    for (int i = max(0, (int)arr.size() - 2); i < arr.size(); i++) {
-        int key = arr[i].getLength();
-        MaskedInterval tmp = arr[i];
-        int j = i - 1;
-
-        while (j >= 0 && arr[j].getLength() < key) {
-            arr[j + 1] = arr[j];
-            --j;
-        }
-        arr[j + 1] = tmp;
-    }
-}
-
 
 bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int index, float loss_threshold_multiplier) {
     if (index == -1) {
@@ -442,8 +428,7 @@ bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int i
     // здесь почему то нужно ограничивать а при поиске нет, надо бы разобраться почему
     float lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
     trySplitInterval(intervals, index, lossThreshold);
-    sortIntervals(intervals);
-    //sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
+    sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
     return false;
 }
