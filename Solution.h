@@ -49,6 +49,7 @@ float loss_threshold_multiplier_B = 0.906f;
 map<int, int> test_metrics;
 
 vector<UserInfo> user_data;
+
 vector<pair<int, int>> user_intervals;
 
 void setHyperParams(float a, float b) {
@@ -306,7 +307,8 @@ bool trySplitInterval(vector<MaskedInterval>& intervals, int index, float loss_t
         intL.insertSplitUser(user_data[interval.users[i]]);
     }
 
-    intervals[index] = intL;
+    intervals.erase(intervals.begin() + index);
+    intervals.push_back(intL);
     intervals.push_back(intR);
 
     return true;
@@ -416,6 +418,22 @@ int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user,
     return optimal_index;
 }
 
+void sortIntervals(std::vector<MaskedInterval>& arr)
+{
+    for (int i = max(0, (int)arr.size() - 2); i < arr.size(); i++) {
+        int key = arr[i].getLength();
+        MaskedInterval tmp = arr[i];
+        int j = i - 1;
+
+        while (j >= 0 && arr[j].getLength() < key) {
+            arr[j + 1] = arr[j];
+            --j;
+        }
+        arr[j + 1] = tmp;
+    }
+}
+
+
 bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int index, float loss_threshold_multiplier) {
     if (index == -1) {
         throw "Error in the function \"splitRoutine\": index == -1";
@@ -424,12 +442,13 @@ bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int i
     // здесь почему то нужно ограничивать а при поиске нет, надо бы разобраться почему
     float lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
     trySplitInterval(intervals, index, lossThreshold);
-    sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
+    sortIntervals(intervals);
+    //sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
     return false;
 }
 
-vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<UserInfo>& userInfos);
+vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<UserInfo>& user_infos);
 
 float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserved, const vector<Interval>& output) {
     
@@ -473,11 +492,12 @@ float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserve
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = false;
+    bool random_enable = true;
 
     srand((unsigned int)time(0));
 
     user_data = userInfos;
+    sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescendingComp);
 
     vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
@@ -491,7 +511,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     // Просчёт с просто отсортированными отрезками
     try {
         userInfosMy = userInfos;
-        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
         result = realSolver(N, M, K, J, L, intervals, userInfosMy);
         best_value = checker(N, M, K, J, L, reservedRBs, result);
     }
@@ -504,7 +523,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#2 - Инверсия блоков длины 4 в отсортированном массиве
     try {
         userInfosMy = userInfos;
-        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
         for (int i = 0; i < userInfosMy.size(); i += 4) {
             if (i + 3 < userInfosMy.size()) {
                 swap(userInfosMy[i], userInfosMy[i + 3]);
@@ -524,7 +542,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#3 - Свапы соседних в отсортированном массиве
     try {
         userInfosMy = userInfos;
-        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
         for (int i = 0; i < userInfosMy.size(); i += 2) {
             if (i + 1 < userInfosMy.size()) {
                 swap(userInfosMy[i], userInfosMy[i + 1]);
@@ -543,7 +560,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#4 - Инверсия блоков длины 3 в отсортированном массиве
     try {
         userInfosMy = userInfos;
-        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
         for (int i = 0; i < userInfosMy.size(); i += 3) {
             if (i + 2 < userInfosMy.size()) {
                 swap(userInfosMy[i], userInfosMy[i + 2]);
@@ -562,7 +578,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
     try {
         userInfosMy = userInfos;
-        sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
         for (int i = 0; i < userInfosMy.size(); i += 6) {
             if (i + 5 < userInfosMy.size()) {
                 swap(userInfosMy[i], userInfosMy[i + 5]);
@@ -585,7 +600,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         int curr_size = 5;
         for (int j = 0; j < 3 && random_enable; j++) {
             userInfosMy = userInfos;
-            sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
             auto it = userInfosMy.begin();
             for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
@@ -607,7 +621,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     try {
         for (int j = 0; j < 3 && random_enable; j++) {
             userInfosMy = userInfos;
-            sort(userInfosMy.begin(), userInfosMy.end(), sortUsersByRbNeedDescendingComp);
             auto it = userInfosMy.begin();
             int d = max(2, (int)userInfos.size() / 4);
             for (int i = 0; i < userInfosMy.size(); i += d, it += d) {
@@ -679,7 +692,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
         }
         else {
             if (intervals[0].getLength() > user_infos[user_index].rbNeed && intervals.size() < J) {
-                float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, (int)user_data.size());
+                float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, N);
 
                 // Заменить слишком больших пользователей на тех кто поменьше и разделить
                 int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier, L);
@@ -740,7 +753,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
         if (success) continue;
 
         if (intervals.size() >= J || deferred.size() == 0) break;
-        float loss_threshold_multiplier = getLossThresholdMultiplier((int)user_data.size() - (int)deferred.size(), (int)user_data.size());
+        float loss_threshold_multiplier = getLossThresholdMultiplier(N - (int)deferred.size(), N);
 
         int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier, L);
         if (split_index >= 0) {       
