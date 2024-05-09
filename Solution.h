@@ -449,26 +449,24 @@ int getMaxTestScore(int M, int L, const vector<Interval>& reserved) {
     for (const auto& R : reserved) {
         max_test_score -= R.end - R.start;
     }
-    max_test_score *= L;
 
     return max_test_score;
 }
 
-float checker(int N, int M, int K, int J, int L, int max_test_score) {
+float checker(int N, int M, int K, int J, int L, int max_test_score_row) {
 
     int output_score = 0;
     int max_user_score = 0;
 
-    unordered_map<int, int> user_metrics;
     for (size_t i = 0; i < N; ++i) {
-        max_user_score += user_data[i].rbNeed;
+        max_user_score += min(max_test_score_row, user_data[i].rbNeed);
 
         if (user_intervals[i].first != -1) {
             output_score += user_intervals[i].second - user_intervals[i].first;
         }
     }
 
-    int totalScore = min(max_user_score, max_test_score);
+    int totalScore = min(max_user_score, max_test_score_row * L);
     float testScore = output_score * 100.0f / (float)totalScore;
 
     return testScore;

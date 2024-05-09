@@ -111,18 +111,17 @@ float run(bool logs_flag) {
             }
         }
 
-        int max_test_score = M;
+        int max_test_score_row = M;
         for (const auto& R : reserved) {
-            max_test_score -= R.end - R.start;
+            max_test_score_row -= R.end - R.start;
         }
-        max_test_score *= L;
 
         for (const auto& U : users) {
-            max_user_score += U.rbNeed;
+            max_user_score += min(max_test_score_row, U.rbNeed);
             output_score += min(U.rbNeed, user_metrics[U.id]);
         }
 
-        int total_score = min(max_user_score, max_test_score);
+        int total_score = min(max_user_score, max_test_score_row*L);
         float test_score = output_score * 100.0f / total_score;
         all_tests_score += test_score;
 
