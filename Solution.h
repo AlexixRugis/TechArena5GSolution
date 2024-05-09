@@ -684,23 +684,26 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
             ++user_index;
         }
         else {
-            if (intervals[0].getLength() > user_infos[user_index].rbNeed && intervals.size() < J) {
-                float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, N);
+            if (intervals.size() < J) {
+                if (intervals[0].getLength() > user_infos[user_index].rbNeed) {
+                    float loss_threshold_multiplier = getLossThresholdMultiplier(user_index, N);
 
-                // Заменить слишком больших пользователей на тех кто поменьше и разделить
-                int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier, L);
-                if (split_index != -1) {
-                    auto it = deferred.begin();
-                    while (it != deferred.end()) {
-                        bool result = tryReduceUser(intervals, *it, 0, deferred);
-                        auto last_it = it;
-                        ++it;
-                        if (result) {
-                            deferred.erase(last_it);
+                    // Заменить слишком больших пользователей на тех кто поменьше и разделить
+                    int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier, L);
+                    
+                    if (split_index != -1) {
+                        auto it = deferred.begin();
+                        while (it != deferred.end()) {
+                            bool result = tryReduceUser(intervals, *it, 0, deferred);
+                            auto last_it = it;
+                            ++it;
+                            if (result) {
+                                deferred.erase(last_it);
+                            }
                         }
+                        splitRoutine(intervals, user, split_index, loss_threshold_multiplier);
+                        continue;
                     }
-                    splitRoutine(intervals, user, split_index, loss_threshold_multiplier);
-                    continue;
                 }
             }
 

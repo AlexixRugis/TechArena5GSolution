@@ -57,7 +57,7 @@ def parse_test(stdout):
             int_data = int_data.split()
             start = int(int_data[0])
             end = int(int_data[1])
-            users = sorted(map(int, int_data[2:]))
+            users = list(map(int, int_data[2:]))
             intervals_list.append(Interval(start, end, users))
             
         intervals_list.sort(key=lambda x: x.start)
