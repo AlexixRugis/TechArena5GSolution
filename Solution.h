@@ -443,17 +443,7 @@ bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user, int i
 
 vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<UserInfo>& user_infos);
 
-float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserved, const vector<Interval>& output) {
-
-    int output_score = 0;
-    int max_user_score = 0;
-
-    unordered_map<int, int> user_metrics;
-    for (const auto& interval : output) {
-        for (int user_id : interval.users) {
-            user_metrics[user_id] += interval.end - interval.start;
-        }
-    }
+int getMaxTestScore(int M, int L, const vector<Interval>& reserved) {
 
     int max_test_score = M;
     for (const auto& R : reserved) {
@@ -461,9 +451,21 @@ float checker(int N, int M, int K, int J, int L, const vector<Interval>& reserve
     }
     max_test_score *= L;
 
-    for (const auto& U : user_data) {
-        max_user_score += U.rbNeed;
-        output_score += min(U.rbNeed, user_metrics[U.id]);
+    return max_test_score;
+}
+
+float checker(int N, int M, int K, int J, int L, int max_test_score) {
+
+    int output_score = 0;
+    int max_user_score = 0;
+
+    unordered_map<int, int> user_metrics;
+    for (size_t i = 0; i < N; ++i) {
+        max_user_score += user_data[i].rbNeed;
+
+        if (user_intervals[i].first != -1) {
+            output_score += user_intervals[i].second - user_intervals[i].first;
+        }
     }
 
     int totalScore = min(max_user_score, max_test_score);
@@ -489,6 +491,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     srand((unsigned int)time(0));
 
+    int max_test_score = getMaxTestScore(M, L, reservedRBs);
+
     user_data = userInfos;
     sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescendingComp);
 
@@ -505,7 +509,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     try {
         userInfosMy = userInfos;
         result = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        best_value = checker(N, M, K, J, L, reservedRBs, result);
+        best_value = checker(N, M, K, J, L, max_test_score);
     }
     catch (...) {}
 
@@ -523,7 +527,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             }
         }
         temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        curr_value = checker(N, M, K, J, L, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 2;
             best_value = curr_value;
@@ -541,7 +545,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             }
         }
         temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        curr_value = checker(N, M, K, J, L, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 3;
             best_value = curr_value;
@@ -559,7 +563,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             }
         }
         temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        curr_value = checker(N, M, K, J, L, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 4;
             best_value = curr_value;
@@ -579,7 +583,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             }
         }
         temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        curr_value = checker(N, M, K, J, L, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 5;
             best_value = curr_value;
@@ -600,7 +604,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 }
             }
             temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-            curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+            curr_value = checker(N, M, K, J, L, max_test_score);
             if (curr_value > best_value) {
                 best_test_index = 6;
                 best_value = curr_value;
@@ -622,7 +626,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 }
             }
             temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-            curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+            curr_value = checker(N, M, K, J, L, max_test_score);
             if (curr_value > best_value) {
                 best_test_index = 7;
                 best_value = curr_value;

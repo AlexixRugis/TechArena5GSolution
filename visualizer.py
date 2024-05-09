@@ -75,7 +75,7 @@ def render_testcase(testcase: TestCase, index: int, realTests):
     
     PADDING = 10
     BTW_BLOCK_PADDING = 5
-    BLOCK_WIDTH_SCALE = 10
+    BLOCK_WIDTH_SCALE = 30
     BLOCK_HEIGHT = 20
     
     maxUserId = testData['N']
