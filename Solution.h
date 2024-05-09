@@ -485,7 +485,7 @@ float checker(int N, int M, int K, int J, int L, int max_test_score_row) {
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = false;
+    bool random_enable = true;
 
     srand((unsigned int)time(0));
 
@@ -593,7 +593,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#6 - random_shuffle блоков длины curr_size = 5 в отсортированном массиве
     try {
         int curr_size = 5;
-        for (int j = 0; j < 5 && random_enable; j++) {
+        for (int j = 0; j < 6 && random_enable; j++) {
             userInfosMy = userInfos;
             auto it = userInfosMy.begin();
             for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
@@ -614,7 +614,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     //#7 - random_shuffle блоков длины user.size() / 4 в отсортированном массиве
     try {
-        for (int j = 0; j < 5 && random_enable; j++) {
+        for (int j = 0; j < 6 && random_enable; j++) {
             userInfosMy = userInfos;
             auto it = userInfosMy.begin();
             int d = max(2, (int)userInfos.size() / 4);
