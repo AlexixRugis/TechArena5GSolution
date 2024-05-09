@@ -190,7 +190,7 @@ struct MaskedInterval : public Interval {
 static bool sortUsers(const UserInfo& U1, const UserInfo& U2) {
 
     if (U1.rbNeed == U2.rbNeed) {
-        if (U1.beam == U2.beam) return U1.id > U2.beam;
+        if (U1.beam == U2.beam) return U1.id > U2.id;
         return U1.beam > U2.beam;
     }
     return U1.rbNeed > U2.rbNeed;
@@ -571,7 +571,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //#6 - random_shuffle блоков длины curr_size = 5 в отсортированном массиве
     try {
         int curr_size = 5;
-        for (int j = 0; j < 3 && random_enable; j++) {
+        for (int j = 0; j < 5 && random_enable; j++) {
             copy(userInfos.begin(), userInfos.end(), userInfosMy.begin());
             auto it = userInfosMy.begin();
             for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
@@ -592,7 +592,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     //#7 - random_shuffle блоков длины user.size() / 4 в отсортированном массиве
     try {
-        for (int j = 0; j < 3 && random_enable; j++) {
+        for (int j = 0; j < 5 && random_enable; j++) {
             copy(userInfos.begin(), userInfos.end(), userInfosMy.begin());
             auto it = userInfosMy.begin();
             int d = max(2, (int)userInfos.size() / 4);
