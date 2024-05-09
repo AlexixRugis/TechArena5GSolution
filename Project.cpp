@@ -22,9 +22,38 @@ using namespace std::chrono;
 
 // [START_TEST, END_TEST], 1 <= START_TEST, defines might be commented
 #define START_TEST 1
-#define END_TEST 1000
+#define END_TEST 1
 
-const bool LOGS_ENABLED = false;
+const bool LOGS_ENABLED = true;
+
+void logInterval(const Interval& interval) {
+
+    cout << setw(10) << interval.start << setw(10) << interval.end;
+    for (const auto& user : interval.users) {
+        cout << user << " ";
+    }
+    cout << '\n';
+}
+
+void logIntervals(const vector<Interval>& intervals) {
+    
+    cout << "Intervals: " << intervals.size() << '\n' << left;
+    cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
+
+    for (const auto& interval : intervals) {
+        logInterval(interval);
+    }
+}
+
+void logMaskedIntervals(const vector<MaskedInterval>& intervals) {
+
+    cout << "Intervals: " << intervals.size() << '\n' << left;
+    cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
+
+    for (const auto& interval : intervals) {
+        logInterval(interval);
+    }
+}
 
 float run(bool logs_flag) {
     ifstream in("open.txt");
@@ -41,6 +70,8 @@ float run(bool logs_flag) {
 #ifdef END_TEST
     __cnt_of_tests__ = END_TEST;
 #endif // END_TEST
+
+    setStepLogger(logs_flag ? logMaskedIntervals : nullptr);
 
     float all_tests_score = 0.0f;
     for (int __test_case__ = __start_test__; __test_case__ < __cnt_of_tests__; __test_case__++) {
@@ -62,6 +93,10 @@ float run(bool logs_flag) {
             users[i].id = i;
             users[i].rbNeed = rbNeed;
             users[i].beam = beam;
+        }
+
+        if (logs_flag) {
+            cout << "Test: " << __test_case__ + 1 << '\n';
         }
 
         vector<Interval> output = Solver(N, M, K, J, L, reserved, users);
@@ -92,17 +127,8 @@ float run(bool logs_flag) {
         all_tests_score += test_score;
 
         if (logs_flag) {
-            cout << "Test: " << __test_case__ + 1 << " Filled: " << test_score << "%" << '\n';
-            cout << "Intervals: " << output.size() << '\n' << left;
-            cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
-
-            for (const auto& interval : output) {
-                cout << setw(10) << interval.start << setw(10) << interval.end;
-                for (const auto& user : interval.users) {
-                    cout << user << " ";
-                }
-                cout << '\n';
-            }
+            logIntervals(output);
+            cout << "Filled: " << test_score << "%" << '\n';
         }
     }
 
