@@ -80,6 +80,17 @@ struct MaskedInterval : public Interval {
         return (mask & (1 << user.beam)) != 0;
     }
 
+    void eraseUser(int user_id) {
+        if (!hasMaskCollision(user_data[user_id])) return;
+
+        int beam = user_data[user_id].beam;
+        int index = mask_indices[beam];
+        if (users[index] != user_id) return;
+        mask ^= (1 << beam);
+        users.erase(users.begin() + index);
+        for (int i = 0; i < users.size(); ++i) mask_indices[user_data[users[i]].beam] = i;
+    }
+
     void insertSplitUser(const UserInfo& user) {
         users.push_back(user.id);
         mask |= (1 << user.beam);
@@ -111,7 +122,7 @@ struct MaskedInterval : public Interval {
 
         user_intervals[user.id] = { start, min(end, start + user.rbNeed) };
 
-        mask |= (1 << user.beam);
+        mask |= (1 << user.beam); 
         for (int i = 0; i < users.size(); ++i) mask_indices[user_data[users[i]].beam] = i;
     }
 
@@ -143,6 +154,7 @@ struct MaskedInterval : public Interval {
                 user_intervals[user_id] = { -1, -1 }; // Пользователь удален полностью
             }
 
+            mask_indices[user_data[user_id].beam] = -1;
             mask ^= (1 << user_data[user_id].beam);
             users.erase(users.begin() + index);
         }
@@ -715,6 +727,38 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
         }
     }
 
+    // оптимизация перевставкой
+    vector<pair<float, int>> user_fills;
+    user_fills.reserve(N);
+    for (size_t i = 0; i < N; ++i) {
+        if (user_intervals[i].first != -1) {
+            user_fills.push_back({ (float)(user_intervals[i].second - user_intervals[i].first) / user_data[i].rbNeed, i });
+        }
+    }
+    for (size_t i = 0; i < user_fills.size(); i++) {
+        if (user_fills[i].first >= 1.0f) continue;
+
+        int user_index = user_fills[i].second;
+
+        bool success = false;
+        for (auto& interval : intervals) {
+            if (interval.users.size() >= L || interval.hasMaskCollision(user_data[user_index])) continue;
+
+            int user_length = user_intervals[user_index].second - user_intervals[user_index].first;
+            if (interval.getLength() > user_length) {
+                success = true;
+                break;
+            }
+        }
+
+        if (!success) continue;
+
+        // delete
+        for (auto& interval : intervals) interval.eraseUser(user_index);
+        user_intervals[user_index] = { -1, -1 };
+        deferred.insert(user_data[user_index]);
+    }
+
     // оптимизация перезаполнения
     {
         int max_cycles = 100;
@@ -762,6 +806,8 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
             deferred.erase(deferred.begin());
         }
     }
+
+    
 
     // Формируем ответ
     vector<Interval> answer(J);
