@@ -22,44 +22,55 @@ class TestCase:
 def getline(stdout):
     return stdout.readline().decode('utf-8')
     
-def parse_test(stdout):
-    intervals_list = list()
-    
+def parse_test(stdout):    
     header = getline(stdout)
+    print(header)
     if not header:
         return None
     
     header = header.split()
-    if len(header) < 4:
+    if len(header) != 2:
         return None
     
     test_case = header[1]
-    accuracy = header[3]
+    accuracy = ''
     
-    intervals = getline(stdout)
-    if not intervals:
-        return None
-    intervals = int(intervals.split()[1])
-    
-    blank_line = getline(stdout)
-    if not blank_line: return None
-    
-    for i in range(intervals):
-        int_data = getline(stdout)
-        if not int_data: return None
-        int_data = int_data.split()
-        start = int(int_data[0])
-        end = int(int_data[1])
-        users = sorted(map(int, int_data[2:]))
-        intervals_list.append(Interval(start, end, users))
+    test_cases_list = []
+    while True:
+        intervals = getline(stdout)
+        if not intervals:
+            return None
+        intervals = intervals.split()
+        if intervals[0] == 'Filled:':
+            accuracy = intervals[1]
+            break
+            
+        intervals = int(intervals[1])
         
-    intervals_list.sort(key=lambda x: x.start)
-    test_case = TestCase(test_case, accuracy, intervals_list)
+        blank_line = getline(stdout)
+        if not blank_line: return None
+        
+        intervals_list = list()
+        for i in range(intervals):
+            int_data = getline(stdout)
+            if not int_data: return None
+            int_data = int_data.split()
+            start = int(int_data[0])
+            end = int(int_data[1])
+            users = sorted(map(int, int_data[2:]))
+            intervals_list.append(Interval(start, end, users))
+            
+        intervals_list.sort(key=lambda x: x.start)
+        test_cases_list.append(intervals_list)
     
-    return test_case
+    output = []
+    for l in test_cases_list:
+        output.append(TestCase(test_case, accuracy, l))
+    
+    return output
     
     
-def render_testcase(testcase: TestCase, realTests):
+def render_testcase(testcase: TestCase, index: int, realTests):
     testData = realTests[int(testcase.number)-1]
     
     PADDING = 10
@@ -71,6 +82,7 @@ def render_testcase(testcase: TestCase, realTests):
     maxUsers = testData['L']
         
     userColors = [colorutils.Color(hsv=((180 * i / maxUserId), 0.5, 1)).hex for i in range(maxUserId)]
+    random.seed(17239)
     random.shuffle(userColors)
     
     userStarts = {}
@@ -101,6 +113,11 @@ def render_testcase(testcase: TestCase, realTests):
         x0 = PADDING + j*BTW_BLOCK_PADDING + intvl.start * BLOCK_WIDTH_SCALE
         x1 = PADDING + j*BTW_BLOCK_PADDING + intvl.end * BLOCK_WIDTH_SCALE
         
+        for i in range(testData['L']):
+            y0 = PADDING + (i+1) * (BLOCK_HEIGHT + BTW_BLOCK_PADDING)
+            y1 = y0 + BLOCK_HEIGHT
+            img1.rectangle(((x0, y0), (x1, y1)), fill='#606060')
+        
         for i, us in enumerate(intvl.users):
             y0 = PADDING + (i+1) * (BLOCK_HEIGHT + BTW_BLOCK_PADDING)
             y1 = y0 + BLOCK_HEIGHT
@@ -110,11 +127,10 @@ def render_testcase(testcase: TestCase, realTests):
             
             fill = (realEnds[us] - userStarts[us]) / testData['users'][us][0]
             
-            img1.rectangle(((x0, y0), (x1, y1)), fill='#606060')
             img1.rectangle(((x0, y0), (ux1, y1)), fill=col)
             img1.text((x0 + BTW_BLOCK_PADDING, y0),f'{us} {round(fill, 2)}',(0,0,0),font=font)
     
-    img.save(f'Visualization/{testcase.number}.jpg')
+    img.save(f'Visualization/{testcase.number}_{index}.jpg')
     
 def load_real_tests():
     realTests = []
@@ -147,11 +163,12 @@ def main():
     
     p = subprocess.Popen(EXEC_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     while True:
-        testcase = parse_test(p.stdout)
-        if not testcase:
+        testcases = parse_test(p.stdout)
+        if not testcases:
             break
         
-        render_testcase(testcase, realTests)
+        for i, case in enumerate(testcases):
+            render_testcase(case, i, realTests)
         
 if __name__ == '__main__':
     main()
