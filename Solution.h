@@ -392,15 +392,16 @@ bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int 
 int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int L) {
 
     int first_or_shortest = -1;
-    int min_filled = INT_MAX;
+    int min_filled = L;
     for (int i = 0; i < intervals.size(); ++i) {
 
         auto& interval = intervals[i];
-        if (interval.users.size() >= L || interval.hasMaskCollision(user)) continue;
+        if (interval.getLength() < user.rbNeed) break;
+        if (interval.hasMaskCollision(user)) continue;
 
-        if (interval.getLength() >= user.rbNeed && interval.users.size() < min_filled) {
+        if (interval.users.size() < min_filled) {
             first_or_shortest = i;
-            min_filled = (int)interval.users.size();
+            min_filled = interval.users.size();
         }
     }
 
@@ -512,80 +513,80 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     float curr_value = 0;
     vector<Interval> temp;
 
-    ////#2 - Инверсия блоков длины 4 в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 4) {
-    //        if (i + 3 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 3]);
-    //            swap(userInfosMy[i + 1], userInfosMy[i + 2]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, reservedRBs, temp);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 2;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#2 - Инверсия блоков длины 4 в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        for (int i = 0; i < userInfosMy.size(); i += 4) {
+            if (i + 3 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 3]);
+                swap(userInfosMy[i + 1], userInfosMy[i + 2]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 2;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
 
-    ////#3 - Свапы соседних в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 2) {
-    //        if (i + 1 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 1]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, reservedRBs, temp);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 3;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#3 - Свапы соседних в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        for (int i = 0; i < userInfosMy.size(); i += 2) {
+            if (i + 1 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 1]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 3;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
 
-    ////#4 - Инверсия блоков длины 3 в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 3) {
-    //        if (i + 2 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 2]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, reservedRBs, temp);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 4;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#4 - Инверсия блоков длины 3 в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        for (int i = 0; i < userInfosMy.size(); i += 3) {
+            if (i + 2 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 2]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 4;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
 
-    ////#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 6) {
-    //        if (i + 5 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 5]);
-    //            //swap(userInfosMy[i + 1], userInfosMy[i + 4]);
-    //            swap(userInfosMy[i + 2], userInfosMy[i + 3]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, reservedRBs, temp);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 5;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
+    try {
+        userInfosMy = userInfos;
+        for (int i = 0; i < userInfosMy.size(); i += 6) {
+            if (i + 5 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 5]);
+                //swap(userInfosMy[i + 1], userInfosMy[i + 4]);
+                swap(userInfosMy[i + 2], userInfosMy[i + 3]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, reservedRBs, temp);
+        if (curr_value > best_value) {
+            best_test_index = 5;
+            best_value = curr_value;
+            result = temp;
+        }
+    }
+    catch (...) {}
 
     //#6 - random_shuffle блоков длины curr_size = 5 в отсортированном массиве
     try {
