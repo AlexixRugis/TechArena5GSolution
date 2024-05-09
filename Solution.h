@@ -190,10 +190,6 @@ struct MaskedInterval : public Interval {
 static bool sortUsersByRbNeedDescendingComp(const UserInfo& U1, const UserInfo& U2) {
 
     if (U1.rbNeed == U2.rbNeed) {
-        if (U1.beam == U2.beam) {
-            return U1.id < U2.id;
-        }
-
         return U1.beam > U2.beam;
     }
     return U1.rbNeed > U2.rbNeed;
@@ -231,7 +227,7 @@ static vector<MaskedInterval> getNonReservedIntervals(const vector<Interval>& re
     return result;
 }
 
-static int getSplitIndex(const MaskedInterval& interval, int loss_threshold) {
+static int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
 
     int start_split_index = 0;
     for (; start_split_index < interval.users.size(); ++start_split_index) {
@@ -249,7 +245,7 @@ static int getSplitIndex(const MaskedInterval& interval, int loss_threshold) {
         */
 
         int loss = interval.end - user_intervals[interval.users[start_split_index]].second;
-        if (loss >= loss_threshold) {
+        if (loss > loss_threshold) {
             break;
         }
     }
@@ -257,7 +253,7 @@ static int getSplitIndex(const MaskedInterval& interval, int loss_threshold) {
     return start_split_index;
 }
 
-static pair<int, int> getSplitPositionAndIndex(vector<MaskedInterval>& intervals, int index, int loss_threshold) {
+static pair<int, int> getSplitPositionAndIndex(vector<MaskedInterval>& intervals, int index, float loss_threshold) {
     MaskedInterval& interval = intervals[index];
     int length = interval.getLength();
     if (length < 2) {
@@ -284,7 +280,7 @@ static pair<int, int> getSplitPositionAndIndex(vector<MaskedInterval>& intervals
 /// |-----|    |-----|
 /// |-----|    |-----|
 /// </summary>
-static bool trySplitInterval(vector<MaskedInterval>& intervals, int index, int loss_threshold) {
+static bool trySplitInterval(vector<MaskedInterval>& intervals, int index, float loss_threshold) {
 
     pair<int, int> split = getSplitPositionAndIndex(intervals, index, loss_threshold);
     int middle_position = split.first;
@@ -304,9 +300,8 @@ static bool trySplitInterval(vector<MaskedInterval>& intervals, int index, int l
         intL.insertSplitUser(user_data[interval.users[i]]);
     }
 
-    
-    intervals[index] = intR;
-    intervals.push_back(intL);
+    intervals[index] = intL;
+    intervals.push_back(intR);
 
     return true;
 }
@@ -401,7 +396,7 @@ static int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo
     int minPosition = 1000;
     int optimal_index = -1;
     for (int i = 0; i < intervals.size(); i++) {
-        int loss_threshold = user.rbNeed * loss_threshold_multiplier;
+        float loss_threshold = user.rbNeed * loss_threshold_multiplier;
         auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
 
         if (res.first != -1) {
@@ -421,8 +416,7 @@ static bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user
         throw "Error in the function \"splitRoutine\": index == -1";
     }
 
-    // здесь почему то нужно ограничивать а при поиске нет, надо бы разобраться почему
-    int lossThreshold = min(intervals[index].getLength(), user.rbNeed) * loss_threshold_multiplier;
+    float lossThreshold = user.rbNeed * loss_threshold_multiplier;
     trySplitInterval(intervals, index, lossThreshold);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
 
@@ -653,7 +647,7 @@ static vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
             bool success = false;
             auto it = deferred.begin();
             while (it != deferred.end()) {
-                bool result = tryReplaceUser(intervals, *it, 0, 250, L, deferred, true);
+                bool result = tryReplaceUser(intervals, *it, 0, 260, L, deferred, true);
                 auto last_it = it;
                 ++it;
                 if (result) {
@@ -680,7 +674,7 @@ static vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
                 if (split_index != -1) {
                     auto it = deferred.begin();
                     while (it != deferred.end()) {
-                        bool result = tryReduceUser(intervals, *it, 0, deferred);
+                        bool result = tryReduceUser(intervals, *it, 20, deferred);
                         auto last_it = it;
                         ++it;
                         if (result) {
@@ -719,19 +713,21 @@ static vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
     // Последняя попытка вставить
     for (int i = 0; i < 10 * max_attempts; ++i) {
 
-        // довставить
-        bool success = false;
-        auto it = deferred.begin();
-        while (it != deferred.end()) {
-            bool result = tryReplaceUser(intervals, *it, 0, 10000, L, deferred, true);
-            auto last_it = it;
-            ++it;
-            if (result) {
-                success = true;
-                deferred.erase(last_it);
+        {
+            // довставить
+            bool success = false;
+            auto it = deferred.begin();
+            while (it != deferred.end()) {
+                bool result = tryReplaceUser(intervals, *it, 0, 10000, L, deferred, true);
+                auto last_it = it;
+                ++it;
+                if (result) {
+                    success = true;
+                    deferred.erase(last_it);
+                }
             }
+            if (success) continue;
         }
-        if (success) continue;
 
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier(N - (int)deferred.size(), N);
