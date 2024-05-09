@@ -37,11 +37,13 @@ struct UserInfo {
     int id;
 };
 
-struct UserInfoComparator {
-    bool operator()(const UserInfo& a, const UserInfo& b) const {
+struct UserSetComparator {
+    bool operator()(const UserInfo& U1, const UserInfo& U2) const {
 
-        if (a.rbNeed == b.rbNeed) return a.beam > b.beam;
-        return a.rbNeed > b.rbNeed;
+        if (U1.rbNeed == U2.rbNeed) { 
+            return U1.beam > U2.beam;
+        }
+        return U1.rbNeed > U2.rbNeed;
     }
 };
 
@@ -196,7 +198,10 @@ struct MaskedInterval : public Interval {
 };
 
 bool sortUsersByRbNeedDescendingComp(const UserInfo& U1, const UserInfo& U2) {
-    if (U1.rbNeed == U2.rbNeed) return U1.beam > U2.beam;
+    if (U1.rbNeed == U2.rbNeed) {
+        if (U1.beam == U2.beam) return U1.id > U2.id;
+        return U1.beam > U2.beam;
+    }
     return U1.rbNeed > U2.rbNeed;
 }
 
@@ -249,7 +254,7 @@ int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
         до разделения округление было вправо для всех
         */
 
-        int loss = interval.end - min(interval.end, user_intervals[interval.users[start_split_index]].second);
+        float loss = interval.end - min(interval.end, user_intervals[interval.users[start_split_index]].second);
         if (loss > loss_threshold) {
             break;
         }
@@ -317,7 +322,7 @@ float getLossThresholdMultiplier(int user_index, int users_count) {
     return loss_threshold_multiplier_A * x + loss_threshold_multiplier_B;
 }
 
-bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int overfill_threshold, int L, set<UserInfo, UserInfoComparator>& deferred, bool reinsert) {
+bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, int overfill_threshold, int L, set<UserInfo, UserSetComparator>& deferred, bool reinsert) {
 
     int best_index = -1;
     int best_overfill = INT_MAX;
@@ -331,11 +336,10 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
         x *= x;
         x *= x;
         x *= x;
-        x *= x;
-        x *= x;
-        float coef = 0.5f + -x;
+        
+        float coef = 1.0f + -x;
         float scaledProfit = profit.first * coef;
-        if (scaledProfit > best_profit.first || scaledProfit == best_profit.first && overfill < best_overfill) {
+        if (scaledProfit > best_profit.first) {
             best_overfill = overfill;
             best_profit = { scaledProfit, profit.second };
             best_index = i;
@@ -353,7 +357,7 @@ bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int
     return false;
 }
 
-bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, set<UserInfo, UserInfoComparator>& deferred) {
+bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, set<UserInfo, UserSetComparator>& deferred) {
 
     int best_index = -1;
     pair<int, int> best_profit = { 0, -1 };
@@ -630,7 +634,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
 
     user_intervals.assign(user_infos.size(), { -1, -1 });
 
-    set<UserInfo, UserInfoComparator> deferred;
+    set<UserInfo, UserSetComparator> deferred;
 
     // Какие-то параметры, которые возможно влияют на точность
     const int max_attempts = 3;
