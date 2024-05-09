@@ -187,9 +187,10 @@ struct MaskedInterval : public Interval {
     }
 };
 
-static bool sortUsersByRbNeedDescendingComp(const UserInfo& U1, const UserInfo& U2) {
+static bool sortUsers(const UserInfo& U1, const UserInfo& U2) {
 
     if (U1.rbNeed == U2.rbNeed) {
+        if (U1.beam == U2.beam) return U1.id > U2.beam;
         return U1.beam > U2.beam;
     }
     return U1.rbNeed > U2.rbNeed;
@@ -311,7 +312,7 @@ inline static float getLossThresholdMultiplier(const int user_index, const int u
     return loss_threshold_multiplier_A * x + loss_threshold_multiplier_B;
 }
 
-static bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, const int replace_threshold, const int overfill_threshold, const int L, set<UserInfo, decltype(sortUsersByRbNeedDescendingComp)*>& deferred, const bool reinsert) {
+static bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& user, const int replace_threshold, const int overfill_threshold, const int L, set<UserInfo, decltype(sortUsers)*>& deferred, const bool reinsert) {
 
     int best_index = -1;
     int best_overfill = INT_MAX;
@@ -344,7 +345,7 @@ static bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& us
     return false;
 }
 
-static bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, const int replace_threshold, set<UserInfo, decltype(sortUsersByRbNeedDescendingComp)*>& deferred) {
+static bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, const int replace_threshold, set<UserInfo, decltype(sortUsers)*>& deferred) {
 
     int best_index = -1;
     pair<int, int> best_profit = { 0, -1 };
@@ -464,12 +465,12 @@ static float checker(const int N, const int M, const int K, const int J, const i
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = false;
+    bool random_enable = true;
 
     srand((unsigned int)time(0));
 
     user_data = userInfos;
-    sort(userInfos.begin(), userInfos.end(), sortUsersByRbNeedDescendingComp);
+    sort(userInfos.begin(), userInfos.end(), sortUsers);
 
     vector<MaskedInterval> intervals = getNonReservedIntervals(reservedRBs, M);
     sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
@@ -620,7 +621,7 @@ static void realSolver(const int N, const int M, const int K, const int J, const
 
     user_intervals.assign(user_infos.size(), { -1, -1 });
 
-    set<UserInfo, decltype(sortUsersByRbNeedDescendingComp)*> deferred(sortUsersByRbNeedDescendingComp);
+    set<UserInfo, decltype(sortUsers)*> deferred(sortUsers);
 
     // Какие-то параметры, которые возможно влияют на точность
     const int max_attempts = 3;
