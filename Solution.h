@@ -467,7 +467,7 @@ static float checker(int N, int M, int K, int J, int L, const vector<Interval>& 
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = false;
 
     srand((unsigned int)time(0));
 
@@ -732,12 +732,18 @@ static vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier(N - (int)deferred.size(), N);
 
-        int split_index = findIntervalToSplit(intervals, *deferred.begin(), loss_threshold_multiplier, L);
-        if (split_index >= 0) {       
-            splitRoutine(intervals, *deferred.begin(), split_index, loss_threshold_multiplier);
-        }
-        else {
-            deferred.erase(deferred.begin());
+        {
+            auto it = deferred.begin();
+            while (it != deferred.end()) {
+                int split_index = findIntervalToSplit(intervals, *it, loss_threshold_multiplier, L);
+                auto last_it = it;
+                ++it;
+                if (split_index >= 0) {
+                    splitRoutine(intervals, *last_it, split_index, loss_threshold_multiplier);
+                    break;
+                }
+                else deferred.erase(last_it);
+            }
         }
     }
 
