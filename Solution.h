@@ -738,7 +738,7 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
         }
     }
 
-    // Оптимизация перевставкой
+    // оптимизация перевставкой
     vector<pair<float, int>> user_fills;
     user_fills.reserve(N);
     for (size_t i = 0; i < N; ++i) {
@@ -770,7 +770,7 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
         deferred.insert(user_data[user_index]);
     }
 
-    // Оптимизация перезаполнения
+    // оптимизация перезаполнения
     {
         int max_cycles = 100;
         while (max_cycles--) {
