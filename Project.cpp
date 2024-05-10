@@ -109,29 +109,30 @@ float run(bool logs_flag) {
     return all_tests_score / (__cnt_of_tests__ - __start_test__);
 }
 
-/*
-07.05 ~21:00
-
-1)  max_attempts было 4, стало 3, точность улучшилась.
-    (Возможно, ближе к концу контеста нужно будет заново перебрать оптимальные
-     значения этих параметров:
-        max_attempts
-        loss_threshold_multiplier_A
-        loss_threshold_multiplier_B )
-
-
-2)  Переработал некоторые последовательности запусков, они теперь вносят больший вклад;
-    в лучшем случае сейчас может достичь 94.6%, если увеличить число итераций у random_shuffle
-
-3)  Произошёл небольшой рефакторинг кода
-
-4)  Добавил try/catch, чтобы в случае чего ничего не легло
-
-5) В начале функции solve добавил параметр bool random_enable
-
-*/
-
 int main() {
+
+    /*
+    float d = 1e-1;
+    float best = 0;
+    float b1, b2;
+    int best_at;
+    for (int at = 1; at <= 8; at++) {
+        setMaxAttempts(at);
+        for (float p1 = -2.0f; p1 <= 2.0f; p1 += d) {
+            for (float p2 = 0.0f; p2 <= 1.0f; p2 += d) {
+                setHyperParams(p1, p2);
+                float res = run(false);
+                if (res > best) {
+                    best = res;
+                    b1 = p1;
+                    b2 = p2;
+                    best_at = at;
+                    cout << at << " " << p1 << " " << p2 << " " << res << '\n';
+                }
+            }
+        }
+    }
+    */
 
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -149,7 +150,12 @@ int main() {
 
     cout << "Bests: " << '\n';
     auto metrics = getTestMetrics();
+    set<pair<int, int>> sorted_metrics;
     for (const auto& p : metrics) {
+        sorted_metrics.insert(p);
+    }
+
+    for (const auto& p : sorted_metrics) {
         cout << p.first << ": " << p.second << '\n';
     }
 }
