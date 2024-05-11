@@ -465,6 +465,36 @@ inline bool splitRoutine(vector<MaskedInterval>& intervals, const UserInfo& user
     return false;
 }
 
+inline void reinsertRoutine(vector<MaskedInterval>& intervals, int N, int L) {
+    // оптимизация перевставкой
+    for (size_t i = 0; i < N; i++) {
+        if (user_intervals[i].first == -1) continue;
+        int fill = user_intervals[i].second - user_intervals[i].first;
+        if (fill >= user_data[i].rbNeed) continue;
+
+        int max_profit = 0;
+        int optimal_index = -1;
+        for (size_t j = 0; j < intervals.size(); ++j) {
+            auto& interval = intervals[j];
+            if (interval.users.size() >= L || interval.hasMaskCollision(user_data[i])) continue;
+
+            int new_length = min(user_data[i].rbNeed, interval.getLength());
+            int profit = new_length - fill;
+            if (interval.getLength() > fill && profit >= max_profit) {
+                max_profit = profit;
+                optimal_index = j;
+            }
+        }
+
+        if (optimal_index == -1) continue;
+
+        // delete
+        for (auto& interval : intervals) interval.eraseUser(i);
+        user_intervals[i] = { -1, -1 };
+        intervals[optimal_index].insertNewUser(user_data[i]);
+    }
+}
+
 inline int getMaxTestScore(int M, int L, const vector<Interval>& reserved) {
 
     int max_test_score = M;
@@ -715,7 +745,6 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
 
                     // Заменить слишком больших пользователей на тех кто поменьше и разделить
                     int split_index = findIntervalToSplit(intervals, user, loss_threshold_multiplier, L);
-
                     if (split_index != -1) {
                         auto it = deferred.begin();
                         while (it != deferred.end()) {
@@ -727,6 +756,7 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
                             }
                         }
                         splitRoutine(intervals, user, split_index, loss_threshold_multiplier);
+                        reinsertRoutine(intervals, N, L);
                         continue;
                     }
                 }
@@ -738,28 +768,20 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
     }
 
     // оптимизация перевставкой
-    vector<pair<float, int>> user_fills;
-    user_fills.reserve(N);
-    for (size_t i = 0; i < N; ++i) {
-        if (user_intervals[i].first != -1) {
-            user_fills.push_back({ (float)(user_intervals[i].second - user_intervals[i].first) / user_data[i].rbNeed, i });
-        }
-    }
-    for (size_t i = 0; i < user_fills.size(); i++) {
-        if (user_fills[i].first >= 1.0f) continue;
-
-        int user_index = user_fills[i].second;
+    for (size_t i = 0; i < N; i++) {
+        if (user_intervals[i].first == -1) continue;
+        int fill = user_intervals[i].second - user_intervals[i].first;
+        if (fill >= user_data[i].rbNeed) continue;
 
         int max_profit = 0;
         int optimal_index = -1;
         for (size_t j = 0; j < intervals.size(); ++j) {
             auto& interval = intervals[j];
-            if (interval.users.size() >= L || interval.hasMaskCollision(user_data[user_index])) continue;
+            if (interval.users.size() >= L || interval.hasMaskCollision(user_data[i])) continue;
 
-            int user_length = user_intervals[user_index].second - user_intervals[user_index].first;
-            int new_length = min(user_data[user_index].rbNeed, interval.getLength());
-            int profit = new_length - user_length;
-            if (interval.getLength() > user_length && profit >= max_profit) {
+            int new_length = min(user_data[i].rbNeed, interval.getLength());
+            int profit = new_length - fill;
+            if (interval.getLength() > fill && profit >= max_profit) {
                 max_profit = profit;
                 optimal_index = j;
             }
@@ -768,29 +790,13 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
         if (optimal_index == -1) continue;
 
         // delete
-        for (auto& interval : intervals) interval.eraseUser(user_index);
-        user_intervals[user_index] = { -1, -1 };
-        intervals[optimal_index].insertNewUser(user_data[user_index]);
+        for (auto& interval : intervals) interval.eraseUser(i);
+        user_intervals[i] = { -1, -1 };
+        intervals[optimal_index].insertNewUser(user_data[i]);
     }
 
     // оптимизация перезаполнения
-    {
-        int max_cycles = 100;
-        while (max_cycles--) {
-            bool success = false;
-            auto it = deferred.begin();
-            while (it != deferred.end()) {
-                bool result = tryReduceUser(intervals, *it, 0, deferred);
-                auto last_it = it;
-                ++it;
-                if (result) {
-                    deferred.erase(last_it);
-                    success = true;
-                }
-            }
-            if (!success) break;
-        }
-    }
+    reinsertRoutine(intervals, N, L);
 
     // Последняя попытка вставить
     for (int i = 0; i < 10 * max_attempts; ++i) {
