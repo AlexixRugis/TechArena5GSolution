@@ -26,35 +26,6 @@ using namespace std::chrono;
 
 const bool LOGS_ENABLED = false;
 
-void logInterval(const Interval& interval) {
-
-    cout << setw(10) << interval.start << setw(10) << interval.end;
-    for (const auto& user : interval.users) {
-        cout << user << " ";
-    }
-    cout << '\n';
-}
-
-void logIntervals(const vector<Interval>& intervals) {
-    
-    cout << "Intervals: " << intervals.size() << '\n' << left;
-    cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
-
-    for (const auto& interval : intervals) {
-        logInterval(interval);
-    }
-}
-
-void logMaskedIntervals(const vector<MaskedInterval>& intervals) {
-
-    cout << "Intervals: " << intervals.size() << '\n' << left;
-    cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
-
-    for (const auto& interval : intervals) {
-        logInterval(interval);
-    }
-}
-
 float run(bool logs_flag) {
     ifstream in("open.txt");
 
@@ -70,8 +41,6 @@ float run(bool logs_flag) {
 #ifdef END_TEST
     __cnt_of_tests__ = END_TEST;
 #endif // END_TEST
-
-    setStepLogger(logs_flag ? logMaskedIntervals : nullptr);
 
     float all_tests_score = 0.0f;
     for (int __test_case__ = __start_test__; __test_case__ < __cnt_of_tests__; __test_case__++) {
@@ -95,10 +64,6 @@ float run(bool logs_flag) {
             users[i].beam = beam;
         }
 
-        if (logs_flag) {
-            cout << "Test: " << __test_case__ + 1 << '\n';
-        }
-
         vector<Interval> output = Solver(N, M, K, J, L, reserved, users);
 
         int output_score = 0;
@@ -111,23 +76,33 @@ float run(bool logs_flag) {
             }
         }
 
-        int max_test_score_row = M;
+        int max_test_score = M;
         for (const auto& R : reserved) {
-            max_test_score_row -= R.end - R.start;
+            max_test_score -= R.end - R.start;
         }
+        max_test_score *= L;
 
         for (const auto& U : users) {
-            max_user_score += min(max_test_score_row, U.rbNeed);
+            max_user_score += U.rbNeed;
             output_score += min(U.rbNeed, user_metrics[U.id]);
         }
 
-        int total_score = min(max_user_score, max_test_score_row*L);
+        int total_score = min(max_user_score, max_test_score);
         float test_score = output_score * 100.0f / total_score;
         all_tests_score += test_score;
 
         if (logs_flag) {
-            logIntervals(output);
-            cout << "Filled: " << test_score << "%" << '\n';
+            cout << "Test: " << __test_case__ + 1 << " Filled: " << test_score << "%" << '\n';
+            cout << "Intervals: " << output.size() << '\n' << left;
+            cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
+
+            for (const auto& interval : output) {
+                cout << setw(10) << interval.start << setw(10) << interval.end;
+                for (const auto& user : interval.users) {
+                    cout << user << " ";
+                }
+                cout << '\n';
+            }
         }
     }
 
@@ -136,21 +111,28 @@ float run(bool logs_flag) {
 
 int main() {
 
-    //float d = 1e-1;
-    //float best = 0;
-    //float b1, b2;
-    //for (float p1 = -1.0f; p1 <= 1.0f; p1 += d) {
-    //    for (float p2 = 0.0f; p2 <= 1.0f; p2+=d) {
-    //        setHyperParams(p1, p2);
-    //        float res = run(false);
-    //        if (res > best) {
-    //            best = res;
-    //            b1 = p1;
-    //            b2 = p2;
-    //            cout << p1 << " " << p2 << " " << res << '\n';
-    //        }
-    //    }
-    //}
+    /*
+    float d = 1e-1;
+    float best = 0;
+    float b1, b2;
+    int best_at;
+    for (int at = 1; at <= 8; at++) {
+        setMaxAttempts(at);
+        for (float p1 = -2.0f; p1 <= 2.0f; p1 += d) {
+            for (float p2 = 0.0f; p2 <= 1.0f; p2 += d) {
+                setHyperParams(p1, p2);
+                float res = run(false);
+                if (res > best) {
+                    best = res;
+                    b1 = p1;
+                    b2 = p2;
+                    best_at = at;
+                    cout << at << " " << p1 << " " << p2 << " " << res << '\n';
+                }
+            }
+        }
+    }
+    */
 
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
