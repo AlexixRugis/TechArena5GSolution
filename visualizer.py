@@ -128,7 +128,7 @@ def render_testcase(testcase: TestCase, index: int, realTests):
             fill = (realEnds[us] - userStarts[us]) / testData['users'][us][0]
             
             img1.rectangle(((x0, y0), (ux1, y1)), fill=col)
-            img1.text((x0 + BTW_BLOCK_PADDING, y0),f'{us} {round(fill, 2)}',(0,0,0),font=font)
+            img1.text((x0 + BTW_BLOCK_PADDING, y0),f"{us}/{testData['users'][us][1]} {round(fill, 2)}",(0,0,0),font=font)
     
     img.save(f'Visualization/{testcase.number}_{index}.jpg')
     
