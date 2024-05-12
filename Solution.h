@@ -477,11 +477,12 @@ inline void reinsertRoutine(vector<MaskedInterval>& intervals, int N, int L) {
         int optimal_index = -1;
         for (size_t j = 0; j < intervals.size(); ++j) {
             auto& interval = intervals[j];
+            if (interval.getLength() <= fill) break;
             if (interval.users.size() >= L || interval.hasMaskCollision(user_data[i])) continue;
 
             int new_length = min(user_data[i].rbNeed, interval.getLength());
             int profit = new_length - fill;
-            if (interval.getLength() > fill && profit >= max_profit) {
+            if (profit >= max_profit) {
                 max_profit = profit;
                 optimal_index = j;
             }
@@ -540,7 +541,7 @@ vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInte
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = false;
 
     srand((unsigned int)time(0));
 
