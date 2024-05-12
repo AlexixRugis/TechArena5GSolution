@@ -645,7 +645,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //}
     //catch (...) {}
 
-    //#6 - random_shuffle блоков разной длины в отсортированном массиве
+    //#6 - random_shuffle блоков разной в отсортированном массиве
     try {
         for (int j = 0; j < 10 && random_enable; j++) {
             userInfosMy = userInfos;
