@@ -134,6 +134,12 @@ int main() {
     }
     */
 
+    //float res = 0;
+    //for (int i = 0; i < 500; i++) {
+    //    res += run(LOGS_ENABLED);
+    //}
+    //cout << res / 500 << "-middle\n";
+
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
     cout.tie(nullptr);

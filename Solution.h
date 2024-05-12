@@ -1,5 +1,7 @@
 ﻿#pragma once
-#pragma optimize("O3")
+
+#pragma GCC optimize ("O3,function-inlining")
+#pragma GCC target("avx2,bmi,bmi2")
 
 #include <iostream>
 #include <vector>
@@ -56,7 +58,6 @@ float loss_threshold_multiplier_A = -0.212f;
 float loss_threshold_multiplier_B = 0.92f;
 
 int max_attempts = 3;
-
 
 unordered_map<int, int> test_metrics;
 
@@ -588,67 +589,67 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     }
     catch (...) {}
 
-    //#3 - Свапы соседних в отсортированном массиве
-    try {
-        userInfosMy = userInfos;
-        for (int i = 0; i < userInfosMy.size(); i += 2) {
-            if (i + 1 < userInfosMy.size()) {
-                swap(userInfosMy[i], userInfosMy[i + 1]);
-            }
-        }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, max_test_score);
-        if (curr_value > best_value) {
-            best_test_index = 3;
-            best_value = curr_value;
-            result = temp;
-        }
-    }
-    catch (...) {}
+    ////#3 - Свапы соседних в отсортированном массиве
+    //try {
+    //    userInfosMy = userInfos;
+    //    for (int i = 0; i < userInfosMy.size(); i += 2) {
+    //        if (i + 1 < userInfosMy.size()) {
+    //            swap(userInfosMy[i], userInfosMy[i + 1]);
+    //        }
+    //    }
+    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+    //    curr_value = checker(N, M, K, J, L, max_test_score);
+    //    if (curr_value > best_value) {
+    //        best_test_index = 3;
+    //        best_value = curr_value;
+    //        result = temp;
+    //    }
+    //}
+    //catch (...) {}
 
-    //#4 - Инверсия блоков длины 3 в отсортированном массиве
-    try {
-        userInfosMy = userInfos;
-        for (int i = 0; i < userInfosMy.size(); i += 3) {
-            if (i + 2 < userInfosMy.size()) {
-                swap(userInfosMy[i], userInfosMy[i + 2]);
-            }
-        }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, max_test_score);
-        if (curr_value > best_value) {
-            best_test_index = 4;
-            best_value = curr_value;
-            result = temp;
-        }
-    }
-    catch (...) {}
+    ////#4 - Инверсия блоков длины 3 в отсортированном массиве
+    //try {
+    //    userInfosMy = userInfos;
+    //    for (int i = 0; i < userInfosMy.size(); i += 3) {
+    //        if (i + 2 < userInfosMy.size()) {
+    //            swap(userInfosMy[i], userInfosMy[i + 2]);
+    //        }
+    //    }
+    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+    //    curr_value = checker(N, M, K, J, L, max_test_score);
+    //    if (curr_value > best_value) {
+    //        best_test_index = 4;
+    //        best_value = curr_value;
+    //        result = temp;
+    //    }
+    //}
+    //catch (...) {}
 
-    //#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
-    try {
-        userInfosMy = userInfos;
-        for (int i = 0; i < userInfosMy.size(); i += 6) {
-            if (i + 5 < userInfosMy.size()) {
-                swap(userInfosMy[i], userInfosMy[i + 5]);
-                //swap(userInfosMy[i + 1], userInfosMy[i + 4]);
-                swap(userInfosMy[i + 2], userInfosMy[i + 3]);
-            }
-        }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, max_test_score);
-        if (curr_value > best_value) {
-            best_test_index = 5;
-            best_value = curr_value;
-            result = temp;
-        }
-    }
-    catch (...) {}
+    ////#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
+    //try {
+    //    userInfosMy = userInfos;
+    //    for (int i = 0; i < userInfosMy.size(); i += 6) {
+    //        if (i + 5 < userInfosMy.size()) {
+    //            swap(userInfosMy[i], userInfosMy[i + 5]);
+    //            swap(userInfosMy[i + 1], userInfosMy[i + 4]);
+    //            swap(userInfosMy[i + 2], userInfosMy[i + 3]);
+    //        }
+    //    }
+    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+    //    curr_value = checker(N, M, K, J, L, max_test_score);
+    //    if (curr_value > best_value) {
+    //        best_test_index = 5;
+    //        best_value = curr_value;
+    //        result = temp;
+    //    }
+    //}
+    //catch (...) {}
 
-    //#6 - random_shuffle блоков длины curr_size = 5 в отсортированном массиве
+    //#6 - random_shuffle блоков разной длины в отсортированном массиве
     try {
-        int curr_size = 5;
-        for (int j = 0; j < 6 && random_enable; j++) {
+        for (int j = 0; j < 10 && random_enable; j++) {
             userInfosMy = userInfos;
+            int curr_size = j + 3;
             auto it = userInfosMy.begin();
             for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
@@ -663,30 +664,48 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 result = temp;
             }
         }
-    }
-    catch (...) {}
-
-    //#7 - random_shuffle блоков длины user.size() / 4 в отсортированном массиве
-    try {
         for (int j = 0; j < 6 && random_enable; j++) {
             userInfosMy = userInfos;
+            int curr_size = j + 3;
             auto it = userInfosMy.begin();
-            int d = max(2, (int)userInfos.size() / 4);
-            for (int i = 0; i < userInfosMy.size(); i += d, it += d) {
-                if (i + d < userInfosMy.size()) {
-                    random_shuffle(it, it + d);
+            for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
+                if (i + curr_size < userInfosMy.size()) {
+                    random_shuffle(it, it + curr_size);
                 }
             }
             temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
             curr_value = checker(N, M, K, J, L, max_test_score);
             if (curr_value > best_value) {
-                best_test_index = 7;
+                best_test_index = 6;
                 best_value = curr_value;
                 result = temp;
             }
         }
+
     }
     catch (...) {}
+
+    ////#7 - random_shuffle блоков длины user.size() / 4 в отсортированном массиве
+    //try {
+    //    for (int j = 0; j < 6 && random_enable; j++) {
+    //        userInfosMy = userInfos;
+    //        auto it = userInfosMy.begin();
+    //        int d = max(2, (int)userInfos.size() / 4);
+    //        for (int i = 0; i < userInfosMy.size(); i += d, it += d) {
+    //            if (i + d < userInfosMy.size()) {
+    //                random_shuffle(it, it + d);
+    //            }
+    //        }
+    //        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+    //        curr_value = checker(N, M, K, J, L, max_test_score);
+    //        if (curr_value > best_value) {
+    //            best_test_index = 7;
+    //            best_value = curr_value;
+    //            result = temp;
+    //        }
+    //    }
+    //}
+    //catch (...) {}
 
     ++test_metrics[best_test_index];
 
