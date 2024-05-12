@@ -22,9 +22,9 @@ using namespace std::chrono;
 
 // [START_TEST, END_TEST], 1 <= START_TEST, defines might be commented
 #define START_TEST 1
-#define END_TEST 1000
+#define END_TEST 20
 
-const bool LOGS_ENABLED = false;
+const bool LOGS_ENABLED = true;
 
 float run(bool logs_flag) {
     ifstream in("open.txt");
@@ -64,6 +64,10 @@ float run(bool logs_flag) {
             users[i].beam = beam;
         }
 
+        if (logs_flag) {
+            cout << "Test: " << __test_case__ + 1 << '\n';
+        }
+
         vector<Interval> output = Solver(N, M, K, J, L, reserved, users);
 
         int output_score = 0;
@@ -92,10 +96,8 @@ float run(bool logs_flag) {
         all_tests_score += test_score;
 
         if (logs_flag) {
-            cout << "Test: " << __test_case__ + 1 << " Filled: " << test_score << "%" << '\n';
             cout << "Intervals: " << output.size() << '\n' << left;
             cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
-
             for (const auto& interval : output) {
                 cout << setw(10) << interval.start << setw(10) << interval.end;
                 for (const auto& user : interval.users) {
@@ -103,6 +105,8 @@ float run(bool logs_flag) {
                 }
                 cout << '\n';
             }
+
+            cout << "Filled: " << test_score << "%" << '\n';
         }
     }
 
