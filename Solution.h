@@ -525,12 +525,6 @@ inline float checker(int N, int M, int K, int J, int L, int max_test_score_row) 
     return testScore;
 }
 
-inline void shuffle(vector<UserInfo>& vec, size_t startIndex, size_t endIndex) {
-    for (size_t i = startIndex; i < endIndex; i++) {
-        swap(vec[i], vec[i + rand() % (endIndex - i)]);
-    }
-}
-
 vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<UserInfo>& user_infos);
 
 /// <summary>
@@ -656,9 +650,10 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         for (int j = 0; j < 10 && random_enable; j++) {
             userInfosMy = userInfos;
             int curr_size = j + 3;
-            for (int i = 0; i < userInfosMy.size(); i += curr_size) {
+            auto it = userInfosMy.begin();
+            for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
-                    shuffle(userInfosMy, i, i + curr_size);
+                    random_shuffle(it, it + curr_size);
                 }
             }
             temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
@@ -672,9 +667,10 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         for (int j = 0; j < 6 && random_enable; j++) {
             userInfosMy = userInfos;
             int curr_size = j + 3;
-            for (int i = 0; i < userInfosMy.size(); i += curr_size) {
+            auto it = userInfosMy.begin();
+            for (int i = 0; i < userInfosMy.size(); i += curr_size, it += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
-                    shuffle(userInfosMy, i, i + curr_size);
+                    random_shuffle(it, it + curr_size);
                 }
             }
             temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
