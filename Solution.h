@@ -48,7 +48,7 @@ struct UserInfo {
 float loss_threshold_multiplier_A = -0.212f;
 float loss_threshold_multiplier_B = 0.92f;
 
-int max_attempts = 3;
+int max_attempts = 4;
 
 unordered_map<int, int> test_metrics;
 
@@ -857,6 +857,7 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
         int split_index = findIntervalToSplit(intervals, user_data[*deferred.begin()], loss_threshold_multiplier, L);
         if (split_index >= 0) {
             splitRoutine(intervals, user_data[*deferred.begin()], split_index, loss_threshold_multiplier);
+            reinsertRoutine(intervals, N, L);
         }
         else {
             deferred.erase(deferred.begin());
