@@ -531,6 +531,16 @@ inline float checker(int N, int M, int K, int J, int L, int max_test_score_row) 
     return testScore;
 }
 
+void riffle_shuffle(vector<uint8_t>& vec, int startIndex, int endIndex) {
+    int i = (startIndex + endIndex) / 2;
+    int j = endIndex - 1;
+    while (i > startIndex) {
+        uint8_t temp = vec[i];
+        vec[i--] = vec[j];
+        vec[j--] = temp;
+    }
+}
+
 void shuffle(vector<uint8_t>& vec, int startIndex, int endIndex) {
     int length = endIndex - startIndex;
     for (int i = endIndex - 1; i > startIndex; --i) {
@@ -663,6 +673,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     //    }
     //}
     //catch (...) {}
+
 
     //#6 - random_shuffle блоков разной в отсортированном массиве
     try {
