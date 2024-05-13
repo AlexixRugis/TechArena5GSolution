@@ -875,7 +875,60 @@ inline vector<Interval> realSolver(int N, int M, int K, int J, int L, vector<Mas
         }
     }
 
+    // двигать границы интервалов
+    //const int min_priority = 1;
+    //sort(intervals.begin(), intervals.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
+    //for (size_t i = 1; i < intervals.size(); ++i) {
+    //    MaskedInterval& right = intervals[i];
+    //    MaskedInterval& left = intervals[i - 1];
 
+    //    if (left.end != right.start) {
+    //        continue;
+    //    }
+
+    //    int priority = 0;
+    //    for (auto u : left.users) {
+    //        if (user_intervals[u].second != left.end) continue;
+    //        int fill = user_intervals[u].second - user_intervals[u].first;
+    //        if (fill < user_data[u].rbNeed) ++priority;
+    //    }
+
+    //    for (auto u : right.users) {
+    //        if (user_intervals[u].first != right.start) continue;
+    //        int fill = user_intervals[u].second - user_intervals[u].first;
+    //        if (fill < user_data[u].rbNeed) --priority;
+    //    }
+
+    //    if (priority > min_priority && right.getLength() > 1) {
+    //        // move right
+    //        left.end++;
+    //        right.start++;
+    //        for (auto u : left.users)
+    //            if (user_intervals[u].second == left.end - 1)
+    //                user_intervals[u].second = min(left.end, user_intervals[u].first + user_data[u].rbNeed);
+    //        for (auto u : right.users)
+    //            if (user_intervals[u].first == right.start - 1) {
+    //                ++user_intervals[u].first;
+    //                // do it later
+    //                //user_intervals[u].second = min(right.end, user_intervals[u].first + user_data[u].rbNeed);
+    //            }
+    //    }
+    //    else if (priority < -min_priority && left.getLength() > 1) {
+    //        // move left
+    //        left.end--;
+    //        right.start--;
+    //        for (auto u : left.users)
+    //            if (user_intervals[u].second == left.end + 1)
+    //                --user_intervals[u].second;
+    //        for (auto u : right.users)
+    //            if (user_intervals[u].first == right.start + 1) {
+    //                --user_intervals[u].first;
+    //                if (user_intervals[u].second - user_intervals[u].first > user_data[u].rbNeed)
+    //                    --user_intervals[u].second;
+    //            }
+    //                
+    //    }
+    //}
 
     // Формируем ответ
     vector<Interval> answer(J);
