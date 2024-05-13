@@ -103,7 +103,7 @@ def render_testcase(testcase: TestCase, index: int, realTests):
         
     w, h = 2*PADDING + (end - start)*BLOCK_WIDTH_SCALE + (intervals_count-1)*BTW_BLOCK_PADDING, 2*PADDING + (maxUsers+1)*BLOCK_HEIGHT + maxUsers*BTW_BLOCK_PADDING
     
-    font = ImageFont.truetype("Fonts/Roboto-Medium.ttf", 16)
+    font = ImageFont.truetype("Fonts/Roboto-Medium.ttf", 12)
     img = Image.new("RGB", (w, h)) 
     img1 = ImageDraw.Draw(img)   
     
@@ -128,7 +128,7 @@ def render_testcase(testcase: TestCase, index: int, realTests):
             fill = (realEnds[us] - userStarts[us]) / testData['users'][us][0]
             
             img1.rectangle(((x0, y0), (ux1, y1)), fill=col)
-            img1.text((x0 + BTW_BLOCK_PADDING, y0),f"{us}/{testData['users'][us][1]} {round(fill, 2)}",(0,0,0),font=font)
+            img1.text((x0 + BTW_BLOCK_PADDING, y0),f"{us} {round(fill, 2)}",(0,0,0),font=font)
     
     img.save(f'Visualization/{testcase.number}_{index}.jpg')
     
