@@ -787,7 +787,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     //#6 - random_shuffle блоков разной в отсортированном массиве
     try {
-        for (int j = 2; j < 13 && random_enable; j++) {
+        for (int j = 0; j < 13 && random_enable; j++) {
             userInfosMy = userIndices;
             int curr_size = j + 3;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
@@ -849,6 +849,44 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     ++test_metrics[best_test_index];
 
+    sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
+    int max_iterations = 50;
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
+    sort(result.begin(), result.end(), sortIntervalsDescendingComp); 
+
+
+    // обновить заполнение интервалов
+    user_intervals = actual_user_intervals;
+    for (size_t i = 0; i < result.size(); i++) {
+        MaskedInterval& interval = result[i];
+        size_t user_index = 0;
+
+        while (user_index < interval.users.size()) {
+            int user_id = interval.users[user_index];
+            if (user_intervals[user_id].second < interval.start)
+                interval.eraseUser(user_id);
+            else
+                user_index++;
+        }
+    }
+    set<uint8_t, UserSetComparator> deferred;
+    for (int i = 0; i < N; ++i)
+        if (user_intervals[i].first == -1) deferred.insert(i);
+    for (size_t i = 0; i < 10; ++i) {
+        bool success = false;
+        auto it = deferred.begin();
+        while (it != deferred.end()) {
+            bool result = tryReplaceUser(intervals, user_data[*it], 0, 10000, L, deferred, true);
+            auto last_it = it;
+            ++it;
+            if (result) {
+                success = true;
+                deferred.erase(last_it);
+            }
+        }
+        if (!success) break;
+    }
+
     // Формируем ответ
     vector<Interval> answer(J);
     int j = 0;
@@ -892,7 +930,7 @@ inline vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vect
             bool success = false;
             auto it = deferred.begin();
             while (it != deferred.end()) {
-                bool result = tryReplaceUser(intervals, user_data[*it], 2, 250, L, deferred, true);
+                bool result = tryReplaceUser(intervals, user_data[*it], 0, 250, L, deferred, true);
                 auto last_it = it;
                 ++it;
                 if (result) {
@@ -982,39 +1020,6 @@ inline vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vect
         else {
             deferred.erase(deferred.begin());
         }
-    }
-
-    sort(intervals.begin(), intervals.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
-    int max_iterations = 50;
-    while (max_iterations-- && (move_bounds_left(intervals, user_intervals) | move_bounds_right(intervals, user_intervals))) {}
-    sort(intervals.begin(), intervals.end(), sortIntervalsDescendingComp);
-
-    // обновить заполнение интервалов
-    for (size_t i = 0; i < intervals.size(); i++) {
-        MaskedInterval& interval = intervals[i];
-        size_t user_index = 0;
-
-        while (user_index < interval.users.size()) {
-            int user_id = interval.users[user_index];
-            if (user_intervals[user_id].second < interval.start)
-                interval.eraseUser(user_id);
-            else
-                user_index++;
-        }
-    }
-    for (size_t i = 0; i < 10; ++i) {
-        bool success = false;
-        auto it = deferred.begin();
-        while (it != deferred.end()) {
-            bool result = tryReplaceUser(intervals, user_data[*it], 0, 10000, L, deferred, true);
-            auto last_it = it;
-            ++it;
-            if (result) {
-                success = true;
-                deferred.erase(last_it);
-            }
-        }
-        if (!success) break;
     }
 
     return move(intervals);

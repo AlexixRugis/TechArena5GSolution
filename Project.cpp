@@ -169,11 +169,11 @@ int main() {
         cout << p.first << ": " << p.second << '\n';
     }
 
-    /*cout << "Stress test ";
+    cout << "Stress test ";
     float average = 0.0f;
     for (int i = 0; i < 100; i++) {
         average += run(false);
     }
     average /= 100;
-    cout << average << endl;*/
+    cout << average << endl;
 }
