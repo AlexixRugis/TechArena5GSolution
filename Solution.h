@@ -403,7 +403,7 @@ inline bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& us
     return false;
 }
 
-inline bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, set<uint8_t, UserSetComparator > & deferred) {
+inline bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& user, int replace_threshold, set<uint8_t, UserSetComparator >& deferred) {
 
     int best_index = -1;
     pair<int, int> best_profit = { 0, -1 };
@@ -581,24 +581,24 @@ inline bool move_bounds_left(vector<MaskedInterval>& intervals, vector<pair<int,
         MaskedInterval& right = intervals[i];
         MaskedInterval& left = intervals[i - 1];
 
-        if (left.end != right.start || left.getLength() <= 1) {
+        if (left.end != right.start) {
             continue;
         }
 
         int leftLoss = 0;
         for (auto u : left.users) {
-            if (actual_user_intervals[u].first == -1) throw -1;
+            if (actual_user_intervals[u].first == -1) throw - 1;
             if (actual_user_intervals[u].second == left.end) leftLoss++;
         }
         int rightProfit = 0;
         for (auto u : right.users) {
-            if (actual_user_intervals[u].first == -1) throw -1;
+            if (actual_user_intervals[u].first == -1) throw - 1;
             if (actual_user_intervals[u].first != right.start) continue;
             int fill = actual_user_intervals[u].second - actual_user_intervals[u].first;
             if (fill < user_data[u].rbNeed) rightProfit++;
         }
 
-        if (rightProfit > leftLoss) {
+        if (rightProfit > leftLoss && left.getLength() > 1) {
             // move left
             for (auto u : left.users)
                 if (actual_user_intervals[u].second == left.end)
@@ -671,7 +671,7 @@ vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<Mask
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = false;
+    bool random_enable = true;
 
     srand((unsigned int)time(0));
 
@@ -786,7 +786,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     //#6 - random_shuffle блоков разной в отсортированном массиве
     try {
-        for (int j = 0; j < 10 && random_enable; j++) {
+        for (int j = 0; j < 13 && random_enable; j++) {
             userInfosMy = userIndices;
             int curr_size = j + 3;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
@@ -804,9 +804,9 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
             }
         }
-        for (int j = 0; j < 6 && random_enable; j++) {
+        for (int j = 0; j < 3 && random_enable; j++) {
             userInfosMy = userIndices;
-            int curr_size = j + 3;
+            int curr_size = j + 5;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
                     shuffle(userInfosMy, i, i + curr_size);
@@ -821,7 +821,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 actual_user_intervals = user_intervals;
             }
         }
-
     }
     catch (...) {}
 
@@ -850,10 +849,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     ++test_metrics[best_test_index];
 
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
-    int max_iterations = 50;
-    while (max_iterations-- && move_bounds_left(result, actual_user_intervals)) {}
-    max_iterations = 50;
-    while (max_iterations-- && move_bounds_right(result, actual_user_intervals)) {}
+    int max_iterations = 60;
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
