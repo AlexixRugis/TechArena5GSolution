@@ -26,6 +26,30 @@ using namespace std::chrono;
 
 const bool LOGS_ENABLED = false;
 
+void printIntervals(const vector<Interval>& output) {
+    cout << "Intervals: " << output.size() << '\n' << left;
+    cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
+    for (const auto& interval : output) {
+        cout << setw(10) << interval.start << setw(10) << interval.end;
+        for (const auto& user : interval.users) {
+            cout << user << " ";
+        }
+        cout << '\n';
+    }
+}
+
+void printMaskedIntervals(const vector<MaskedInterval>& output) {
+    cout << "Intervals: " << output.size() << '\n' << left;
+    cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
+    for (const auto& interval : output) {
+        cout << setw(10) << interval.start << setw(10) << interval.end;
+        for (const auto& user : interval.users) {
+            cout << user << " ";
+        }
+        cout << '\n';
+    }
+}
+
 float run(bool logs_flag) {
     ifstream in("open.txt");
 
@@ -41,6 +65,8 @@ float run(bool logs_flag) {
 #ifdef END_TEST
     __cnt_of_tests__ = END_TEST;
 #endif // END_TEST
+
+    setStepLogger(logs_flag ? printMaskedIntervals : nullptr);
 
     float all_tests_score = 0.0f;
     for (int __test_case__ = __start_test__; __test_case__ < __cnt_of_tests__; __test_case__++) {
@@ -99,16 +125,7 @@ float run(bool logs_flag) {
         all_tests_score += test_score;
 
         if (logs_flag) {
-            cout << "Intervals: " << output.size() << '\n' << left;
-            cout << setw(10) << "Begin" << setw(10) << "End" << setw(10) << "Users" << '\n';
-            for (const auto& interval : output) {
-                cout << setw(10) << interval.start << setw(10) << interval.end;
-                for (const auto& user : interval.users) {
-                    cout << user << " ";
-                }
-                cout << '\n';
-            }
-
+            printIntervals(output);
             cout << "Filled: " << test_score << "%" << '\n';
         }
     }

@@ -875,6 +875,49 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     max_iterations = 50;
     while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) || move_bounds_right(result, actual_user_intervals))) {}
 
+    // перераспределение пользователей по частотам
+    {
+        vector<int> userStarts(N, -1);
+        vector<int> userEnds(N, -1);
+        vector<int> userLengths(N, -1);
+
+        for (const auto& interval : result) {
+            for (auto u : interval.users) {
+                if (userStarts[u] == -1) userStarts[u] = interval.start;
+                userEnds[u] = interval.end;
+            }
+        }
+
+        for (int i = 0; i < N; ++i) {
+            if (userStarts[i] != -1) userLengths[i] = userEnds[i] - userStarts[i];
+        }
+
+        vector<vector<pair<int, int>>> oldUsers(32);
+        for (int i = 0; i < N; ++i) {
+            if (userLengths[i] == -1) continue;
+            oldUsers[user_data[i].beam].push_back({ userLengths[i], i });
+        }
+        for (auto& b : oldUsers) sort(b.begin(), b.end(), [](const pair<int, int>& l, const pair<int, int>& r) { return l.first > r.first; });
+        vector<vector<pair<int, int>>> newUsers(32);
+        for (int i = 0; i < N; ++i)
+            newUsers[user_data[i].beam].push_back({ user_data[i].rbNeed, i });
+        for (auto& b : newUsers) sort(b.begin(), b.end(), [](const pair<int, int>& l, const pair<int, int>& r) { return l.first > r.first; });
+
+        map<int, int> old2new;
+        for (int i = 0; i < oldUsers.size(); ++i) {
+            for (int j = 0; j < oldUsers[i].size(); ++j) {
+                old2new[oldUsers[i][j].second] = newUsers[i][j].second;
+            }
+        }
+
+        for (auto& interval : result) {
+            for (auto& u : interval.users) {
+                u = old2new[u];
+            }
+        }
+        // дальше ничего делать нельзя, потому что внутренние структуры данных теперь невалидны
+    }
+
     // Формируем ответ
     vector<Interval> answer(J);
     int j = 0;
