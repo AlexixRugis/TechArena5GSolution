@@ -532,7 +532,7 @@ inline bool move_bounds_right(vector<MaskedInterval>& intervals, vector<pair<int
 
     for (size_t i = 1; i < intervals.size(); ++i) {
         MaskedInterval& right = intervals[i];
-        MaskedInterval& left = intervals[i];
+        MaskedInterval& left = intervals[i - 1];
 
         if (left.end != right.start || right.getLength() <= 1) {
             continue;
@@ -852,6 +852,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     int max_iterations = 50;
     while (max_iterations-- && move_bounds_left(result, actual_user_intervals)) {}
+    max_iterations = 50;
+    while (max_iterations-- && move_bounds_right(result, actual_user_intervals)) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
