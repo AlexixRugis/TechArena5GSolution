@@ -51,8 +51,8 @@ struct UserInfo {
 //
 //int max_attempts = 3;
 
-float loss_threshold_multiplier_A = -0.212f;
-float loss_threshold_multiplier_B = 0.92f;
+float loss_threshold_multiplier_A = -0.21f;
+float loss_threshold_multiplier_B = 0.915f;
 
 int max_attempts = 4;
 
@@ -522,28 +522,6 @@ inline int getMaxTestScore(int M, int L, const vector<Interval>& reserved) {
     return max_test_score;
 }
 
-template<typename T>
-void riffle_shuffle(vector<T>& vec, int startIndex, int endIndex) {
-    int i = (startIndex + endIndex) / 2;
-    int j = endIndex - 1;
-    while (i > startIndex) {
-        T temp = vec[i];
-        vec[i--] = vec[j];
-        vec[j--] = temp;
-    }
-}
-
-template<typename T>
-void shuffle(vector<T>& vec, int startIndex, int endIndex) {
-    int length = endIndex - startIndex;
-    for (int i = endIndex - 1; i > startIndex; --i) {
-        int index = rand() % length;
-        T temp = vec[i];
-        vec[i] = vec[startIndex + index];
-        vec[startIndex + index] = temp;
-    }
-}
-
 inline bool move_bounds_right(vector<MaskedInterval>& intervals, vector<pair<int, int>> actual_user_intervals) {
     vector<int> right_intervals(actual_user_intervals.size());
     bool success = false;
@@ -597,14 +575,13 @@ inline bool move_bounds_right(vector<MaskedInterval>& intervals, vector<pair<int
 }
 
 inline bool move_bounds_left(vector<MaskedInterval>& intervals, vector<pair<int, int>>& actual_user_intervals) {
-
     // двигать границы интервалов
     bool success = false;
-    for (size_t i = 1; i < intervals.size(); ++i) {
+    for (size_t i = intervals.size() - 1; i >= 1; --i) {
         MaskedInterval& right = intervals[i];
         MaskedInterval& left = intervals[i - 1];
 
-        if (left.end != right.start) {
+        if (left.end != right.start || left.getLength() <= 1) {
             continue;
         }
 
@@ -621,7 +598,7 @@ inline bool move_bounds_left(vector<MaskedInterval>& intervals, vector<pair<int,
             if (fill < user_data[u].rbNeed) rightProfit++;
         }
 
-        if (rightProfit > leftLoss && left.getLength() > 1) {
+        if (rightProfit > leftLoss) {
             // move left
             for (auto u : left.users)
                 if (actual_user_intervals[u].second == left.end)
@@ -657,6 +634,26 @@ inline float checker(int N, int M, int K, int J, int L, int max_test_score_row) 
     float testScore = output_score * 100.0f / (float)totalScore;
 
     return testScore;
+}
+
+void riffle_shuffle(vector<uint8_t>& vec, int startIndex, int endIndex) {
+    int i = (startIndex + endIndex) / 2;
+    int j = endIndex - 1;
+    while (i > startIndex) {
+        uint8_t temp = vec[i];
+        vec[i--] = vec[j];
+        vec[j--] = temp;
+    }
+}
+
+void shuffle(vector<uint8_t>& vec, int startIndex, int endIndex) {
+    int length = endIndex - startIndex;
+    for (int i = endIndex - 1; i > startIndex; --i) {
+        int index = rand() % length;
+        uint8_t temp = vec[i];
+        vec[i] = vec[startIndex + index];
+        vec[startIndex + index] = temp;
+    }
 }
 
 vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<uint8_t>& user_infos);
@@ -807,7 +804,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
             }
         }
-        for (int j = 0; j < 3 && random_enable; j++) {
+        for (int j = 0; j < 4 && random_enable; j++) {
             userInfosMy = userIndices;
             int curr_size = j + 5;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
@@ -851,10 +848,9 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     ++test_metrics[best_test_index];
 
-    user_intervals = actual_user_intervals;
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     int max_iterations = 60;
-    while (max_iterations-- && (move_bounds_left(result, user_intervals) | move_bounds_right(result, user_intervals))) {}
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
