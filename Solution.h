@@ -836,44 +836,6 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     int max_iterations = 50;
     while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) || move_bounds_right(result, actual_user_intervals))) {}
-    sort(result.begin(), result.end(), sortIntervalsDescendingComp); 
-
-
-    // обновить заполнение интервалов
-    user_intervals = actual_user_intervals;
-    for (size_t i = 0; i < result.size(); i++) {
-        MaskedInterval& interval = result[i];
-        size_t user_index = 0;
-
-        while (user_index < interval.users.size()) {
-            int user_id = interval.users[user_index];
-            if (user_intervals[user_id].second < interval.start)
-                interval.eraseUser(user_id);
-            else
-                user_index++;
-        }
-    }
-    set<uint8_t, UserSetComparator> deferred;
-    for (int i = 0; i < N; ++i)
-        if (user_intervals[i].first == -1) deferred.insert(i);
-    for (size_t i = 0; i < 10; ++i) {
-        bool success = false;
-        auto it = deferred.begin();
-        while (it != deferred.end()) {
-            bool result = tryReplaceUser(intervals, user_data[*it], 0, 10000, L, deferred, true);
-            auto last_it = it;
-            ++it;
-            if (result) {
-                success = true;
-                deferred.erase(last_it);
-            }
-        }
-        if (!success) break;
-    }
-
-    sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
-    max_iterations = 50;
-    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) || move_bounds_right(result, actual_user_intervals))) {}
 
     // перераспределение пользователей по частотам
     {
