@@ -522,14 +522,66 @@ inline int getMaxTestScore(int M, int L, const vector<Interval>& reserved) {
     return max_test_score;
 }
 
-inline bool move_bounds(vector<MaskedInterval>& intervals, vector<pair<int, int>>& actual_user_intervals) {
+inline bool move_bounds_right(vector<MaskedInterval>& intervals, vector<pair<int, int>> actual_user_intervals) {
+    vector<int> right_intervals(actual_user_intervals.size());
+    bool success = false;
+
+    for (size_t i = 0; i < intervals.size(); ++i) {
+        for (auto u : intervals[i].users) right_intervals[u] = i;
+    }
+
+    for (size_t i = 1; i < intervals.size(); ++i) {
+        MaskedInterval& right = intervals[i];
+        MaskedInterval& left = intervals[i];
+
+        if (left.end != right.start || right.getLength() <= 1) {
+            continue;
+        }
+
+        int rightLoss = 0;
+        for (auto u : right.users) {
+            if (actual_user_intervals[u].first == -1) throw - 1;
+            if (actual_user_intervals[u].second == intervals[right_intervals[u]].end) rightLoss++;
+        }
+        int leftProfit = 0;
+        for (auto u : left.users) {
+            if (actual_user_intervals[u].first == -1) throw - 1;
+            if (actual_user_intervals[u].second != left.end) continue;
+            int fill = actual_user_intervals[u].second - actual_user_intervals[u].first;
+            if (fill < user_data[u].rbNeed) leftProfit++;
+        }
+
+        if (leftProfit > rightLoss) {
+            // move right
+            for (auto u : left.users)
+                if (actual_user_intervals[u].second = left.end)
+                    if (actual_user_intervals[u].second - actual_user_intervals[u].first < user_data[u].rbNeed)
+                        actual_user_intervals[u].second++;
+
+            for (auto u : right.users) {
+                if (actual_user_intervals[u].first == right.start) {
+                    actual_user_intervals[u].first++;
+                    actual_user_intervals[u].second = min(intervals[right_intervals[u]].end, actual_user_intervals[u].second + 1);
+                }
+            }
+
+            left.end++;
+            right.start++;
+            success = true;
+        }
+    }
+
+    return success;
+}
+
+inline bool move_bounds_left(vector<MaskedInterval>& intervals, vector<pair<int, int>>& actual_user_intervals) {
     // двигать границы интервалов
     bool success = false;
     for (size_t i = intervals.size() - 1; i >= 1; --i) {
         MaskedInterval& right = intervals[i];
         MaskedInterval& left = intervals[i - 1];
 
-        if (left.end != right.start) {
+        if (left.end != right.start || left.getLength() <= 1) {
             continue;
         }
 
@@ -546,7 +598,7 @@ inline bool move_bounds(vector<MaskedInterval>& intervals, vector<pair<int, int>
             if (fill < user_data[u].rbNeed) rightProfit++;
         }
 
-        if (rightProfit > leftLoss && left.getLength() > 1) {
+        if (rightProfit > leftLoss) {
             // move left
             for (auto u : left.users)
                 if (actual_user_intervals[u].second == left.end)
@@ -619,7 +671,7 @@ vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<Mask
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = false;
 
     srand((unsigned int)time(0));
 
@@ -799,7 +851,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     int max_iterations = 50;
-    while (max_iterations-- && move_bounds(result, actual_user_intervals)) {}
+    while (max_iterations-- && move_bounds_left(result, actual_user_intervals)) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
