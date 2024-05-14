@@ -522,6 +522,28 @@ inline int getMaxTestScore(int M, int L, const vector<Interval>& reserved) {
     return max_test_score;
 }
 
+template<typename T>
+void riffle_shuffle(vector<T>& vec, int startIndex, int endIndex) {
+    int i = (startIndex + endIndex) / 2;
+    int j = endIndex - 1;
+    while (i > startIndex) {
+        T temp = vec[i];
+        vec[i--] = vec[j];
+        vec[j--] = temp;
+    }
+}
+
+template<typename T>
+void shuffle(vector<T>& vec, int startIndex, int endIndex) {
+    int length = endIndex - startIndex;
+    for (int i = endIndex - 1; i > startIndex; --i) {
+        int index = rand() % length;
+        T temp = vec[i];
+        vec[i] = vec[startIndex + index];
+        vec[startIndex + index] = temp;
+    }
+}
+
 inline bool move_bounds_right(vector<MaskedInterval>& intervals, vector<pair<int, int>> actual_user_intervals) {
     vector<int> right_intervals(actual_user_intervals.size());
     bool success = false;
@@ -575,9 +597,10 @@ inline bool move_bounds_right(vector<MaskedInterval>& intervals, vector<pair<int
 }
 
 inline bool move_bounds_left(vector<MaskedInterval>& intervals, vector<pair<int, int>>& actual_user_intervals) {
+
     // двигать границы интервалов
     bool success = false;
-    for (size_t i = intervals.size() - 1; i >= 1; --i) {
+    for (size_t i = 1; i < intervals.size(); ++i) {
         MaskedInterval& right = intervals[i];
         MaskedInterval& left = intervals[i - 1];
 
@@ -634,26 +657,6 @@ inline float checker(int N, int M, int K, int J, int L, int max_test_score_row) 
     float testScore = output_score * 100.0f / (float)totalScore;
 
     return testScore;
-}
-
-void riffle_shuffle(vector<uint8_t>& vec, int startIndex, int endIndex) {
-    int i = (startIndex + endIndex) / 2;
-    int j = endIndex - 1;
-    while (i > startIndex) {
-        uint8_t temp = vec[i];
-        vec[i--] = vec[j];
-        vec[j--] = temp;
-    }
-}
-
-void shuffle(vector<uint8_t>& vec, int startIndex, int endIndex) {
-    int length = endIndex - startIndex;
-    for (int i = endIndex - 1; i > startIndex; --i) {
-        int index = rand() % length;
-        uint8_t temp = vec[i];
-        vec[i] = vec[startIndex + index];
-        vec[startIndex + index] = temp;
-    }
 }
 
 vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<MaskedInterval> reservedRBs, const vector<uint8_t>& user_infos);
@@ -848,9 +851,10 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     ++test_metrics[best_test_index];
 
+    user_intervals = actual_user_intervals;
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     int max_iterations = 60;
-    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
+    while (max_iterations-- && (move_bounds_left(result, user_intervals) | move_bounds_right(result, user_intervals))) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
@@ -895,7 +899,7 @@ inline vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vect
             bool success = false;
             auto it = deferred.begin();
             while (it != deferred.end()) {
-                bool result = tryReplaceUser(intervals, user_data[*it], 0, 250, L, deferred, true);
+                bool result = tryReplaceUser(intervals, user_data[*it], 2, 250, L, deferred, true);
                 auto last_it = it;
                 ++it;
                 if (result) {

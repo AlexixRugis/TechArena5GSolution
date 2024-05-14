@@ -168,4 +168,12 @@ int main() {
     for (const auto& p : sorted_metrics) {
         cout << p.first << ": " << p.second << '\n';
     }
+
+    /*cout << "Stress test ";
+    float average = 0.0f;
+    for (int i = 0; i < 100; i++) {
+        average += run(false);
+    }
+    average /= 100;
+    cout << average << endl;*/
 }
