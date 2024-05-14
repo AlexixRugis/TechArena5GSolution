@@ -51,7 +51,7 @@ struct UserInfo {
 //
 //int max_attempts = 3;
 
-float loss_threshold_multiplier_A = -0.21f;
+float loss_threshold_multiplier_A = -0.212f;
 float loss_threshold_multiplier_B = 0.915f;
 
 int max_attempts = 4;
@@ -241,7 +241,7 @@ inline void setStepLogger(void (*logger) (const vector<MaskedInterval>& interval
     log_step = logger;
 }
 
-inline bool sortUsersByRbNeedDescendingComp(int id1, int id2) {
+inline bool sortUsersByRbNeedDescendingComp(uint8_t id1, uint8_t id2) {
     const UserInfo& U1 = user_data[id1];
     const UserInfo& U2 = user_data[id2];
 
@@ -672,7 +672,7 @@ vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<Mask
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = false;
 
     srand((unsigned int)time(0));
 
@@ -839,37 +839,33 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     // перераспределение пользователей по частотам
     {
-        vector<int> userStarts(N, -1);
-        vector<int> userEnds(N, -1);
-        vector<int> userLengths(N, -1);
+        vector<int> userLengths(N, 0);
+        vector<uint8_t> insertedUsers;
+        insertedUsers.reserve(N);
 
         for (const auto& interval : result) {
             for (auto u : interval.users) {
-                if (userStarts[u] == -1) userStarts[u] = interval.start;
-                userEnds[u] = interval.end;
+                if (userLengths[u] == 0) insertedUsers.push_back(u);
+                userLengths[u] += interval.end - interval.start;
             }
         }
 
-        for (int i = 0; i < N; ++i) {
-            if (userStarts[i] != -1) userLengths[i] = userEnds[i] - userStarts[i];
-        }
+        sort(insertedUsers.begin(), insertedUsers.end(), [&userLengths](const uint8_t id1, const uint8_t id2) {
+            if (user_data[id1].beam == user_data[id2].beam) return userLengths[id1] > userLengths[id2];
+            return user_data[id1].beam < user_data[id2].beam;
+            });
 
-        vector<vector<pair<int, int>>> oldUsers(32);
-        for (int i = 0; i < N; ++i) {
-            if (userLengths[i] == -1) continue;
-            oldUsers[user_data[i].beam].push_back({ userLengths[i], i });
-        }
-        for (auto& b : oldUsers) sort(b.begin(), b.end(), [](const pair<int, int>& l, const pair<int, int>& r) { return l.first > r.first; });
-        vector<vector<pair<int, int>>> newUsers(32);
-        for (int i = 0; i < N; ++i)
-            newUsers[user_data[i].beam].push_back({ user_data[i].rbNeed, i });
-        for (auto& b : newUsers) sort(b.begin(), b.end(), [](const pair<int, int>& l, const pair<int, int>& r) { return l.first > r.first; });
+        sort(userInfos.begin(), userInfos.end(), [](const UserInfo& U1, const UserInfo& U2) {
+            if (U1.beam == U2.beam) return U1.rbNeed > U2.rbNeed;
+            return U1.beam < U2.beam;
+            });
 
-        map<int, int> old2new;
-        for (int i = 0; i < oldUsers.size(); ++i) {
-            for (int j = 0; j < oldUsers[i].size(); ++j) {
-                old2new[oldUsers[i][j].second] = newUsers[i][j].second;
-            }
+        unordered_map<int, int> old2new;
+        int indexNew = 0;
+        for (int i = 0; i < insertedUsers.size(); ++i, ++indexNew) {
+            while (userInfos[indexNew].beam != user_data[insertedUsers[i]].beam) ++indexNew;
+
+            old2new[insertedUsers[i]] = userInfos[indexNew].id;
         }
 
         for (auto& interval : result) {
