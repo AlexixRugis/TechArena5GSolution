@@ -810,7 +810,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             int curr_size = j + 5;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
-                    shuffle(userInfosMy, i, i + curr_size);
+                    riffle_shuffle(userInfosMy, i, i + curr_size);
                 }
             }
             temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
