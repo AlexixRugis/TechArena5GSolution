@@ -80,6 +80,9 @@ float run(bool logs_flag) {
             }
         }
 
+        set<int> beams;
+        for (auto& u : users) beams.insert(u.beam);
+
         int max_test_score = M;
         for (const auto& R : reserved) {
             max_test_score -= R.end - R.start;
@@ -159,7 +162,7 @@ int main() {
     cout << "Time x2 taken by function: " << duration.count() * 2 << " ms" << '\n';
 
     cout << "Bests: " << '\n';
-    auto metrics = getTestMetrics();
+    const auto& metrics = getTestMetrics();
     set<pair<int, int>> sorted_metrics;
     for (const auto& p : metrics) {
         sorted_metrics.insert(p);
@@ -169,11 +172,11 @@ int main() {
         cout << p.first << ": " << p.second << '\n';
     }
 
-    cout << "Stress test ";
+    /*cout << "Stress test ";
     float average = 0.0f;
     for (int i = 0; i < 100; i++) {
         average += run(false);
     }
     average /= 100;
-    cout << average << endl;
+    cout << average << endl;*/
 }

@@ -101,6 +101,10 @@ struct MaskedInterval : public Interval {
         return (mask & (1 << user.beam)) != 0;
     }
 
+    int getMaxLoss() const {
+        return max(0, end - user_intervals[users.back()].second);
+    }
+
     void eraseUser(int user_id) {
         if (!hasMaskCollision(user_data[user_id])) return;
 
@@ -153,10 +157,7 @@ struct MaskedInterval : public Interval {
 
     bool canBeDeferred(int user_index) const {
         int user_id = users[user_index];
-        if (user_intervals[user_id].first == start && user_intervals[user_id].second <= end) {
-            return true;
-        }
-        return false;
+        return user_intervals[user_id].first == start && user_intervals[user_id].second <= end;
     }
 
     int replaceUser(const UserInfo& user, int index) {
@@ -257,8 +258,6 @@ inline bool sortIntervalsDescendingComp(const MaskedInterval& I1, const MaskedIn
 
     if (l1 == l2) {
         int users1 = I1.users.size(), users2 = I2.users.size();
-        if (users1 == users2) return I1.end < I2.end;
-
         return users1 > users2;
     }
 
@@ -356,7 +355,6 @@ inline bool trySplitInterval(vector<MaskedInterval>& intervals, int index, float
         intL.insertSplitUser(user_data[interval.users[i]]);
     }
 
-
     intervals[index] = intR;
     intervals.push_back(intL);
 
@@ -372,9 +370,15 @@ inline bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& us
 
     int best_index = -1;
     int best_overfill = INT_MAX;
+ 
     pair<float, int> best_profit = { 0, -1 };
 
     for (int i = 0; i < intervals.size(); ++i) {
+        if (intervals[i].users.size() == L) {
+            if (intervals[i].getMaxLoss() <= replace_threshold) continue;
+            if (user_intervals[intervals[i].users.back()].second > intervals[i].start + user.rbNeed) continue;
+        }
+
         int overfill = user.rbNeed - intervals[i].getLength();
         if (overfill > overfill_threshold) continue;
         pair<int, int> profit = intervals[i].getInsertionProfit(user, L);
@@ -383,9 +387,9 @@ inline bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& us
         x *= x;
         x *= x;
 
-        float coef = 1.0f + -x;
+        float coef = 1.1f + -x;
         float scaledProfit = profit.first * coef;
-        if (scaledProfit > best_profit.first) {
+        if (scaledProfit >= best_profit.first) {
             best_overfill = overfill;
             best_profit = { scaledProfit, profit.second };
             best_index = i;
@@ -432,14 +436,14 @@ inline bool tryReduceUser(vector<MaskedInterval>& intervals, const UserInfo& use
 inline int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& user, int L) {
 
     int first_or_shortest = -1;
-    int min_filled = L;
+    int min_filled = L - 1;
     for (int i = 0; i < intervals.size(); ++i) {
 
         auto& interval = intervals[i];
         if (interval.getLength() < user.rbNeed) break;
         if (interval.hasMaskCollision(user)) continue;
 
-        if (interval.users.size() < min_filled) {
+        if (interval.users.size() <= min_filled) {
             first_or_shortest = i;
             min_filled = interval.users.size();
         }
@@ -723,71 +727,73 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
             best_value = curr_value;
             result = temp;
             actual_user_intervals = user_intervals;
-
         }
     }
     catch (...) {}
 
-    ////#3 - Свапы соседних в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 2) {
-    //        if (i + 1 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 1]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, max_test_score);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 3;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#3 - Свапы соседних в отсортированном массиве
+    try {
+        userInfosMy = userIndices;
+        for (int i = 0; i < userInfosMy.size(); i += 2) {
+            if (i + 1 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 1]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, max_test_score);
+        if (curr_value > best_value) {
+            best_test_index = 3;
+            best_value = curr_value;
+            result = temp;
+            actual_user_intervals = user_intervals;
+        }
+    }
+    catch (...) {}
 
-    ////#4 - Инверсия блоков длины 3 в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 3) {
-    //        if (i + 2 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 2]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, max_test_score);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 4;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#4 - Инверсия блоков длины 3 в отсортированном массиве
+    try {
+        userInfosMy = userIndices;
+        for (int i = 0; i < userInfosMy.size(); i += 3) {
+            if (i + 2 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 2]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, max_test_score);
+        if (curr_value > best_value) {
+            best_test_index = 4;
+            best_value = curr_value;
+            result = temp;
+            actual_user_intervals = user_intervals;
+        }
+    }
+    catch (...) {}
 
-    ////#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
-    //try {
-    //    userInfosMy = userInfos;
-    //    for (int i = 0; i < userInfosMy.size(); i += 6) {
-    //        if (i + 5 < userInfosMy.size()) {
-    //            swap(userInfosMy[i], userInfosMy[i + 5]);
-    //            swap(userInfosMy[i + 1], userInfosMy[i + 4]);
-    //            swap(userInfosMy[i + 2], userInfosMy[i + 3]);
-    //        }
-    //    }
-    //    temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //    curr_value = checker(N, M, K, J, L, max_test_score);
-    //    if (curr_value > best_value) {
-    //        best_test_index = 5;
-    //        best_value = curr_value;
-    //        result = temp;
-    //    }
-    //}
-    //catch (...) {}
+    //#5 - Хитрая инверсия блоков длины 6 в отсортированном массиве
+    try {
+        userInfosMy = userIndices;
+        for (int i = 0; i < userInfosMy.size(); i += 6) {
+            if (i + 5 < userInfosMy.size()) {
+                swap(userInfosMy[i], userInfosMy[i + 5]);
+                swap(userInfosMy[i + 1], userInfosMy[i + 4]);
+                swap(userInfosMy[i + 2], userInfosMy[i + 3]);
+            }
+        }
+        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, L, max_test_score);
+        if (curr_value > best_value) {
+            best_test_index = 5;
+            best_value = curr_value;
+            result = temp;
+            actual_user_intervals = user_intervals;
+        }
+    }
+    catch (...) {}
 
 
     //#6 - random_shuffle блоков разной в отсортированном массиве
     try {
-        for (int j = 0; j < 13 && random_enable; j++) {
+        for (int j = 3; j < 13 && random_enable; j++) {
             userInfosMy = userIndices;
             int curr_size = j + 3;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
@@ -825,33 +831,11 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     }
     catch (...) {}
 
-    ////#7 - random_shuffle блоков длины user.size() / 4 в отсортированном массиве
-    //try {
-    //    for (int j = 0; j < 6 && random_enable; j++) {
-    //        userInfosMy = userInfos;
-    //        auto it = userInfosMy.begin();
-    //        int d = max(2, (int)userInfos.size() / 4);
-    //        for (int i = 0; i < userInfosMy.size(); i += d, it += d) {
-    //            if (i + d < userInfosMy.size()) {
-    //                random_shuffle(it, it + d);
-    //            }
-    //        }
-    //        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-    //        curr_value = checker(N, M, K, J, L, max_test_score);
-    //        if (curr_value > best_value) {
-    //            best_test_index = 7;
-    //            best_value = curr_value;
-    //            result = temp;
-    //        }
-    //    }
-    //}
-    //catch (...) {}
-
     ++test_metrics[best_test_index];
 
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     int max_iterations = 50;
-    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) || move_bounds_right(result, actual_user_intervals))) {}
     sort(result.begin(), result.end(), sortIntervalsDescendingComp); 
 
 
@@ -889,7 +873,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
     max_iterations = 50;
-    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) || move_bounds_right(result, actual_user_intervals))) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
@@ -934,7 +918,7 @@ inline vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vect
             bool success = false;
             auto it = deferred.begin();
             while (it != deferred.end()) {
-                bool result = tryReplaceUser(intervals, user_data[*it], 0, 250, L, deferred, true);
+                bool result = tryReplaceUser(intervals, user_data[*it], 2, 250, L, deferred, true);
                 auto last_it = it;
                 ++it;
                 if (result) {
