@@ -887,6 +887,10 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         if (!success) break;
     }
 
+    sort(result.begin(), result.end(), [](const MaskedInterval& l, const MaskedInterval& r) { return l.start < r.start; });
+    max_iterations = 50;
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) | move_bounds_right(result, actual_user_intervals))) {}
+
     // Формируем ответ
     vector<Interval> answer(J);
     int j = 0;
