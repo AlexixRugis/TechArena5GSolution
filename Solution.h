@@ -680,7 +680,7 @@ vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<Mask
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true;
+    bool random_enable = true; 
 
     srand((unsigned int)time(0));
 
@@ -819,7 +819,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
             }
         }
-        for (int j = 1; j < 7 && random_enable; j++) {
+        for (int j = 1; j < 6 && random_enable; j++) {
             userInfosMy = userIndices;
             int curr_size = j + 4;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
