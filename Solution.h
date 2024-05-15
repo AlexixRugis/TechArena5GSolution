@@ -52,13 +52,13 @@ struct UserInfo {
 //int max_attempts = 3;
 
 // В среднем на 0.002% лучше, лучший случай улучшился, худший немного ухудшился
-float loss_threshold_multiplier_A = -0.282f;
+float loss_threshold_multiplier_A = -0.283f;
 float loss_threshold_multiplier_B = 0.972f;
- 
+
 int max_attempts = 3;
 
 // минимальная длина свободной части отрезка чтобы произвошло разделение
-int last_split_attempt_threshold = 102;
+int last_split_attempt_threshold = 100;
 
 unordered_map<int, int> test_metrics;
 
@@ -396,7 +396,7 @@ inline bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& us
         x *= x;
         x *= x;
 
-        float coef = 1.1f + -x;
+        float coef = 1.0f + -x;
         float scaledProfit = profit.first * coef;
         if (scaledProfit >= best_profit.first) {
             best_overfill = overfill;
@@ -819,12 +819,12 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
             }
         }
-        for (int j = 0; j < 5 && random_enable; j++) {
+        for (int j = 1; j < 7 && random_enable; j++) {
             userInfosMy = userIndices;
             int curr_size = j + 4;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
-                    riffle_shuffle(userInfosMy, i, i + curr_size); 
+                    riffle_shuffle(userInfosMy, i, i + curr_size);
                 }
             }
             temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
@@ -1020,7 +1020,7 @@ inline vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vect
             }
         }
         if (success) continue;
-         
+
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier(N - (int)deferred.size(), N);
 
