@@ -55,6 +55,8 @@ float loss_threshold_multiplier_A = -0.212f;
 float loss_threshold_multiplier_B = 0.915f;
 
 int max_attempts = 4;
+// минимальная длина свободной части отрезка чтобы произвошло разделение
+int last_split_attempt_threshold = 102;
 
 unordered_map<int, int> test_metrics;
 
@@ -283,10 +285,7 @@ inline vector<MaskedInterval> getNonReservedIntervals(const vector<Interval>& re
 }
 
 inline int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
-
-    int start_split_index = 0;
-    for (; start_split_index < interval.users.size(); ++start_split_index) {
-        /*
+    /*
         \         |
          \        |
            \      |
@@ -297,12 +296,20 @@ inline int getSplitIndex(const MaskedInterval& interval, float loss_threshold) {
                   |             \
         Все что справа от черты округляется вправо, слева округляется по черте
         до разделения округление было вправо для всех
-        */
 
+        Если разделение по loss не произошло, но есть свободное место на последнем уровне > last_split_attempt_threshold, то произойдет разделение по последнему
+    */
+
+    int start_split_index = 0;
+    for (; start_split_index < interval.users.size(); ++start_split_index) {
         float loss = interval.end - min(interval.end, user_intervals[interval.users[start_split_index]].second);
         if (loss > loss_threshold) {
             break;
         }
+    }
+
+    if (start_split_index == interval.users.size() && interval.users.size() > 0 && interval.getMaxLoss() > last_split_attempt_threshold) {
+        start_split_index--;
     }
 
     return start_split_index;
