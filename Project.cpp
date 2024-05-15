@@ -66,7 +66,7 @@ float run(bool logs_flag) {
     __cnt_of_tests__ = END_TEST;
 #endif // END_TEST
 
-    setStepLogger(logs_flag ? printMaskedIntervals : nullptr);
+    //setStepLogger(logs_flag ? printMaskedIntervals : nullptr);
 
     float all_tests_score = 0.0f;
     for (int __test_case__ = __start_test__; __test_case__ < __cnt_of_tests__; __test_case__++) {

@@ -672,7 +672,7 @@ vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<Mask
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = false;
+    bool random_enable = true;
 
     srand((unsigned int)time(0));
 
@@ -701,7 +701,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
     // Просчёт с просто отсортированными отрезками
     try {
         userInfosMy = userIndices;
-        result = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        result = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
         best_value = checker(N, M, K, J, maxInsertions, max_test_score);
         actual_user_intervals = user_intervals;
     }
@@ -720,7 +720,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 swap(userInfosMy[i + 1], userInfosMy[i + 2]);
             }
         }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+        temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
         curr_value = checker(N, M, K, J, maxInsertions, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 2;
@@ -739,8 +739,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 swap(userInfosMy[i], userInfosMy[i + 1]);
             }
         }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, max_test_score);
+        temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, maxInsertions, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 3;
             best_value = curr_value;
@@ -758,8 +758,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 swap(userInfosMy[i], userInfosMy[i + 2]);
             }
         }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, max_test_score);
+        temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, maxInsertions, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 4;
             best_value = curr_value;
@@ -779,8 +779,8 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 swap(userInfosMy[i + 2], userInfosMy[i + 3]);
             }
         }
-        temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
-        curr_value = checker(N, M, K, J, L, max_test_score);
+        temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
+        curr_value = checker(N, M, K, J, maxInsertions, max_test_score);
         if (curr_value > best_value) {
             best_test_index = 5;
             best_value = curr_value;
@@ -801,7 +801,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                     shuffle(userInfosMy, i, i + curr_size);
                 }
             }
-            temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+            temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
             curr_value = checker(N, M, K, J, maxInsertions, max_test_score);
             if (curr_value > best_value) {
                 best_test_index = 6;
@@ -819,7 +819,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                     riffle_shuffle(userInfosMy, i, i + curr_size);
                 }
             }
-            temp = realSolver(N, M, K, J, L, intervals, userInfosMy);
+            temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
             curr_value = checker(N, M, K, J, maxInsertions, max_test_score);
             if (curr_value > best_value) {
                 best_test_index = 6;
