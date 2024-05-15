@@ -377,7 +377,7 @@ inline bool tryReplaceUser(vector<MaskedInterval>& intervals, const UserInfo& us
 
     int best_index = -1;
     int best_overfill = INT_MAX;
- 
+
     pair<float, int> best_profit = { 0, -1 };
 
     for (int i = 0; i < intervals.size(); ++i) {
@@ -1018,7 +1018,7 @@ inline vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vect
             }
         }
         if (success) continue;
-
+         
         if (intervals.size() >= J || deferred.size() == 0) break;
         float loss_threshold_multiplier = getLossThresholdMultiplier(N - (int)deferred.size(), N);
 
