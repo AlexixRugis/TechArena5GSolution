@@ -189,11 +189,16 @@ int main() {
         cout << p.first << ": " << p.second << '\n';
     }
 
-    /*cout << "Stress test ";
+    cout << "Stress test\n";
+    float minValue = 100.0f;
+    float maxValue = 0.0f;
     float average = 0.0f;
     for (int i = 0; i < 100; i++) {
-        average += run(false);
+        float value = run(false);
+        average += value;
+        minValue = min(minValue, value);
+        maxValue = max(maxValue, value);
     }
     average /= 100;
-    cout << average << endl;*/
+    cout << "Average: " << average << " Min: " << minValue << " Max: " << maxValue << endl;
 }
