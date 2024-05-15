@@ -466,7 +466,6 @@ inline int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo
     for (int i = 0; i < intervals.size(); i++) {
         float loss_threshold = user.rbNeed * loss_threshold_multiplier;
         auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
-
         if (res.first != -1) {
             float value = res.second;
             if (value < minPosition) {
@@ -880,8 +879,23 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
                 u = old2new[u];
             }
         }
-        // дальше ничего делать нельзя, потому что внутренние структуры данных теперь невалидны
+
+        actual_user_intervals.assign(N, { -1,-1 });
+        vector<int> userStarts(N, -1);
+        vector<int> userEnds(N, -1);
+        for (const auto& interval : result) {
+            for (auto u : interval.users) {
+                if (userStarts[u] == -1) userStarts[u] = interval.start;
+                userEnds[u] = interval.end;
+            }
+        }
+        for (int i = 0; i < N; ++i) {
+            if (userStarts[i] == -1) continue;
+            actual_user_intervals[i] = { userStarts[i], min(userEnds[i], userStarts[i] + user_data[i].rbNeed) };
+        }
     }
+    max_iterations = 50;
+    while (max_iterations-- && (move_bounds_left(result, actual_user_intervals) || move_bounds_right(result, actual_user_intervals))) {}
 
     // Формируем ответ
     vector<Interval> answer(J);
