@@ -819,12 +819,12 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
             }
         }
-        for (int j = 0; j < 3 && random_enable; j++) {
+        for (int j = 0; j < 5 && random_enable; j++) {
             userInfosMy = userIndices;
-            int curr_size = j + 5;
+            int curr_size = j + 4;
             for (int i = 0; i < userInfosMy.size(); i += curr_size) {
                 if (i + curr_size < userInfosMy.size()) {
-                    riffle_shuffle(userInfosMy, i, i + curr_size);
+                    riffle_shuffle(userInfosMy, i, i + curr_size); 
                 }
             }
             temp = realSolver(N, M, K, J, maxInsertions, intervals, userInfosMy);
