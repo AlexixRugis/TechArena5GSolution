@@ -51,10 +51,12 @@ struct UserInfo {
 //
 //int max_attempts = 3;
 
-float loss_threshold_multiplier_A = -0.212f;
-float loss_threshold_multiplier_B = 0.915f;
+// В среднем на 0.002% лучше, лучший случай улучшился, худший немного ухудшился
+float loss_threshold_multiplier_A = -0.282f;
+float loss_threshold_multiplier_B = 0.972f;
+ 
+int max_attempts = 3;
 
-int max_attempts = 4;
 // минимальная длина свободной части отрезка чтобы произвошло разделение
 int last_split_attempt_threshold = 102;
 
