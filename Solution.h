@@ -351,16 +351,15 @@ inline bool trySplitInterval(vector<MaskedInterval>& intervals, int index, float
     int start_split_index = split.second;
     if (middle_position == -1) return false;
 
-    MaskedInterval& interval = intervals[index];
+
+    MaskedInterval& interval = intervals[index]; 
     MaskedInterval intL(interval.start, middle_position);
     MaskedInterval intR(middle_position, interval.end);
 
-    for (int i = 0; i < start_split_index; ++i) {
-        intL.insertSplitUser(user_data[interval.users[i]]);
-        intR.insertSplitUser(user_data[interval.users[i]]);
-    }
-
-    for (int i = start_split_index; i < interval.users.size(); ++i) {
+    for (int i = 0; i < interval.users.size(); i++) {
+        if (user_intervals[interval.users[i]].second > middle_position) {
+            intR.insertSplitUser(user_data[interval.users[i]]);
+        }
         intL.insertSplitUser(user_data[interval.users[i]]);
     }
 
@@ -464,14 +463,20 @@ inline int findInsertIndex(vector<MaskedInterval>& intervals, const UserInfo& us
 inline int findIntervalToSplit(vector<MaskedInterval>& intervals, const UserInfo& user, float loss_threshold_multiplier, int L) {
 
     float minPosition = 1000;
+    int maxProfit = 0;
+    int minLoss = 1000;
     int optimal_index = -1;
     for (int i = 0; i < intervals.size(); i++) {
         float loss_threshold = user.rbNeed * loss_threshold_multiplier;
+
         auto res = getSplitPositionAndIndex(intervals, i, loss_threshold);
         if (res.first != -1) {
             float value = res.second;
-            if (value < minPosition) {
+            int profit = intervals[i].getInsertionProfit(user, L).first;
+
+            if (value < minPosition || value == minPosition && profit > maxProfit) {
                 minPosition = value;
+                maxProfit = profit;
                 optimal_index = i;
             }
         }
@@ -680,7 +685,7 @@ vector<MaskedInterval> realSolver(int N, int M, int K, int J, int L, vector<Mask
 /// <returns>Интервалы передачи данных, до J штук</returns>
 vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> reservedRBs, vector<UserInfo> userInfos) {
 
-    bool random_enable = true; 
+    bool random_enable = true;
 
     srand((unsigned int)time(0));
 
@@ -717,7 +722,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
 
     // Попытки улучшить
     float curr_value = 0;
-    vector<MaskedInterval> temp;
+    vector<MaskedInterval> temp; 
 
     //#2 - Инверсия блоков длины 4 в отсортированном массиве
     try {
@@ -783,7 +788,7 @@ vector<Interval> Solver(int N, int M, int K, int J, int L, vector<Interval> rese
         for (int i = 0; i < userInfosMy.size(); i += 6) {
             if (i + 5 < userInfosMy.size()) {
                 swap(userInfosMy[i], userInfosMy[i + 5]);
-                swap(userInfosMy[i + 1], userInfosMy[i + 4]);
+                //swap(userInfosMy[i + 1], userInfosMy[i + 4]);
                 swap(userInfosMy[i + 2], userInfosMy[i + 3]);
             }
         }
